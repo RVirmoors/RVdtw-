@@ -1,0 +1,4 @@
+LIBRARY RVdtw~.mxe
+
+EXPORTS
+	main
