@@ -93,7 +93,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <TargetExt>.mxe</TargetExt>
-    <IncludePath>C:\Users\prow\Dropbox\doctorat\c++\MaxSDK-6.1.4\examples\audio\rvdtw~;C:\Users\prow\Dropbox\doctorat\c++\fftw\32;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)\fftw\32;$(ProjectDir);$(IncludePath)</IncludePath>
     <OutDir>$(C74SUPPORT)..\sdk-build\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -222,7 +222,7 @@
       <DataExecutionPrevention />
       <ImportLibrary>$(IntDir)$(ProjectName).lib</ImportLibrary>
       <TargetMachine>MachineX86</TargetMachine>
-      <AdditionalLibraryDirectories>C:\Users\prow\Dropbox\doctorat\c++\fftw\32;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProjectDir)fftw\32;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>libfftw3-3.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
