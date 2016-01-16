@@ -67,7 +67,7 @@ void RVdtw_assist(t_RVdtw *x, void *b, long m, long a, char *s) {
     { 
                 sprintf(s, "int: set length, mfccs: add frame");
     } 
-    else							// outlet
+    else							// outlets
     {	
 		switch (a) 
         {
@@ -239,14 +239,10 @@ Raskell::Raskell() {
 		dspinit();
 		l_buffer_reference = NULL;
 		score_name = live_name = "";
-
-        //in = (double*) fftw_malloc(sizeof(double) * WINDOW_SIZE);
-		//logEnergy = (double*) fftw_malloc(sizeof(double) * m);							// 48 filter banks
+						
 		in = fftw_alloc_real(WINDOW_SIZE);
-		logEnergy = fftw_alloc_real(m);
+		logEnergy = fftw_alloc_real(m);		// 48 filter banks
 		mfcc_frame = (t_atom*)sysmem_newptrclear(params * sizeof(t_atom_float));
-        //out = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * (WINDOW_SIZE/2 + 1));
-		//tmfcc = (double*) fftw_malloc(sizeof(double) * m);
 		out = fftw_alloc_complex(WINDOW_SIZE/2 + 1);
 		tmfcc = fftw_alloc_real(m);
         plan = fftw_plan_dft_r2c_1d(WINDOW_SIZE, in, out, FFTW_MEASURE); // FFT real to complex FFTW_MEASURE 
@@ -295,7 +291,7 @@ void Raskell::perform(double *in, long sampleframes) {
 			add_sample_to_frames(in[i]);
 		}
 		for(i=0; i<active_frames; i++) {
-			if(frame_index[i]==0) {// if frame is full, then compute
+			if(frame_index[i]==0) {		// if frame is full, then compute
 				for(j=0; j<WINDOW_SIZE; j++)
 					frame[i][j] *= window[j]; // apply hamming window
 				calc_mfcc(i); // get tmfcc[]
@@ -407,8 +403,8 @@ void Raskell::reset() {
 
 	b_path.clear();
 	b_path.resize(bsize*2);
-	for (i=0; i<bsize; i++) {
-		b_path[i].resize(2); // t; h;
+	for (i=0; i<bsize*2; i++) {
+		b_path[i].resize(2); // t & h
 	}
 
 	Dist.clear();
@@ -592,30 +588,31 @@ void Raskell::init_dtw() {
 	}
 	dtw[t_mod][h_mod] = Dist[t%bsize][h%bsize]; // initial starting point
 	
-	b_start = 0;
+	b_start = 2;
 
 	increment_t();
 	increment_h();
 }
 
 void Raskell::distance(t_uint16 i, t_uint16 j) {
-	t_uint16 k, imod = i%bsize, jmod=j%bsize;
+	t_uint16 k, xi = i%xsize, imod = i%bsize, jmod=j%bsize;
 	// build distance matrix
 	double total;
 	total = 0;
 
-	if ((x[i][0]==0)||(y[j][0]==0)) { // if either is undefined
+	if ((x[xi][0]==0)||(y[j][0]==0)) { // if either is undefined
 		total = VERY_BIG;
 		//post("WARNING input is zero, t=%i h=%i", i, j);
-	} else for (k=0; k<1; k++) { //params
-		total = total + ((x[i][k] - y[j][k]) * (x[i][k] - y[j][k])); // distance computation 
+	} else for (k = 0; k < params; k++) {
+		total = total + ((x[xi][k] - y[j][k]) * (x[xi][k] - y[j][k])); // distance computation 
 	}
 	if (total < 0.0001)
 		total = 0;
-	total=sqrt(total);
-	total+=ALPHA;
+	total = sqrt(total);
+	total += ALPHA;
 
 	Dist[imod][jmod] = total;
+	//post("Dist[%i][%i] = %f", imod, jmod, total);
 }
 
 void Raskell::dtw_process() {
@@ -630,7 +627,7 @@ void Raskell::dtw_process() {
 
 		if (t<bsize)	jstart = 0;
 		else			jstart = t-bsize;
-		for (j=jstart; j<t; j++) {
+		for (j = jstart; j < t; j++) {
 			//if(debug) post("calc HAP! j=%i h=%i", j, h);
 			distance(j, h); // calculate distance for new row
 			//if ((j>0)&&(h>0)) 
@@ -743,23 +740,23 @@ void Raskell::calc_dtw(t_uint16 i, t_uint16 j) {
 		cheapest = bot;
 		}
 	dtw[imod][jmod] = cheapest;
-	//post("dtw[%i][%i] = %f",i,j,cheapest);
+	//post("dtw[%i][%i] = %f", i, j, cheapest);
 }
 
 void Raskell::dtw_back() {
-	double top, mid, bot, cheapest;
-	t_uint16 i, j;
-	history[t % bsize] = h;
-	if (t > bsize && h > bsize) {
-		//fill(b_path.begin(), b_path.end(), 0);
-		Deque.clear();
-		while (history[b_start] < (h+1 - bsize))
-			b_start++; 
+	b_start = t % bsize;
+	history[b_start] = h % bsize;
+	if (t >= bsize && h >= bsize) {
+		double top, mid, bot, cheapest;
+		t_uint16 i, j;
+		Deque.clear();		
 		post("b_start is %i", b_start);
-		b_dtw[b_start][history[b_start]] = Dist[t%bsize][h%bsize]; // starting point
+		b_dtw[b_start][history[b_start]] = Dist[b_start][history[b_start]]; // starting point
 		b_move[b_start][history[b_start]] = NEW_BOTH;
-		for (i = b_start+1; i >= t; i++) {
-			for (j = history[b_start]+1; j <= h; j++) {
+
+		// compute backwards DTW, and b_move
+		for (i = b_start+1 % bsize; i != b_start; i = (i+1) % bsize) {
+			for (j = history[b_start]+1 % bsize; j != history[b_start]; j = (j+1) % bsize) {
 				t_uint16 imod = i % bsize;
 				t_uint16 imin1 = (i+bsize-1) % bsize;		
 				t_uint16 imin2 = (i+bsize-2) % bsize;
@@ -767,9 +764,9 @@ void Raskell::dtw_back() {
 				t_uint16 jmin1 = (j+bsize-1) % bsize;
 				t_uint16 jmin2 = (j+bsize-2) % bsize;
 
-				top = b_dtw[imin2][jmin1] + Dist[i%bsize][j%bsize] * side_weight;
-				mid = b_dtw[imin1][jmin1] + Dist[i%bsize][j%bsize] * mid_weight;
-				bot = b_dtw[imin1][jmin2] + Dist[i%bsize][j%bsize] * side_weight;
+				top = b_dtw[imin2][jmin1] + Dist[imod][jmod] * side_weight;
+				mid = b_dtw[imin1][jmin1] + Dist[imod][jmod] * mid_weight;
+				bot = b_dtw[imin1][jmin2] + Dist[imod][jmod] * side_weight;
 
 				if( (top < mid) && (top < bot))	{ 
 					cheapest = top; b_move[imod][jmod] = NEW_ROW;
@@ -783,25 +780,26 @@ void Raskell::dtw_back() {
 				b_dtw[imod][jmod] = cheapest;
 			}
 		}
-		i = b_start; j = history[b_start]; 
+		i = b_start + 1 % bsize; 
+		j = history[b_start] + 1 % bsize; 
 		int p = 0;
-		while (i < t && j < h) {
+		while (i != b_start && j != history[b_start]) {
 			if (b_move[i][j] == NEW_ROW) {
-				j++;
+				j = (j+1) % bsize;
 			}
 			else if (b_move[i][j] == NEW_COL) {
-				i++;
+				i = (i+1) % bsize;
 			}
 			else if (b_move[i][j] == NEW_BOTH) {
-				i++; j++;
+				i = (i+1) % bsize; 
+				j = (j+1) % bsize;
 			}
 			b_path[p][0] = i; b_path[p][1] = j;
 			p++;
 		}
-		t_uint16 b_end = i;
 		double Min = VERY_BIG, Sum;
-		int K = 3, L = 10;
-		for (i = 0; i < p-K; i++) {
+		int K = p - 3, L = 10;
+		for (i = 0; i < K; i++) {
 			if (i < L) { // http://www.infoarena.ro/deque-si-aplicatii
 				bool popped = false;
 				while (!Deque.empty() && b_dtw[b_path[i][0]][b_path[i][1]] <= b_dtw[b_path[Deque.front()][0]][b_path[Deque.front()][1]] ) {

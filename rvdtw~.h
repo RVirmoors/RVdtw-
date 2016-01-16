@@ -1,5 +1,4 @@
 #define RV_VERSION 0.1
-// TO DO: tempo = signal
 // TO DO: read in chunks
 // TO DO: goto h
 
@@ -19,8 +18,8 @@
 #include <sstream>
 
 
-#define	xsize 32 // DTW window length (# of input frames)
-#define bsize 128 // backwards DTW win length
+#define	xsize 8//32 // DTW window length (# of input frames)
+#define bsize 16//128 // backwards DTW win length
 #define WINDOW_SIZE 2048
 #define HOP_SIZE 512
 
@@ -28,7 +27,7 @@
 #define VERY_BIG  (1e10)
 #define THRESH 0 //0.4 // base threshold for marker admission
 #define MAX_RUN 50000  //3 //5000
-#define ALPHA 1 // 1 //100
+#define ALPHA 1 //100
 
 #define COMP_THRESH -140
 #define COMP_RELEASE 4
