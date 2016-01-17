@@ -18,7 +18,7 @@
 #include <sstream>
 
 
-#define	xsize 8//32 // DTW window length (# of input frames)
+#define	fsize 8//32 // DTW window length (# of input frames)
 #define bsize 16//128 // backwards DTW win length
 #define WINDOW_SIZE 2048
 #define HOP_SIZE 512
@@ -27,7 +27,7 @@
 #define VERY_BIG  (1e10)
 #define THRESH 0 //0.4 // base threshold for marker admission
 #define MAX_RUN 50000  //3 //5000
-#define ALPHA 1 //100
+#define ALPHA 0//1 //100
 
 #define COMP_THRESH -140
 #define COMP_RELEASE 4
@@ -115,6 +115,7 @@ public:
 	vector<vector<t_uint16> > markers;
 	float tempo;
 	t_uint16 pivot1_t, pivot1_h, pivot2_t, pivot2_h;
+	double tempo_prob;
 
 	t_uint16 runCount, maxRunCount, m_iter, m_ideal_iter, m_count, input_sel;
 	t_atom dump[50];

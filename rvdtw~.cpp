@@ -328,7 +328,7 @@ void Raskell::mfccs(t_uint16 argc) {
 			iter++;
 
 			for (i=0; i<argc; i++) {
-				x[t_mod][i] = tmfcc[i];
+				x[t%bsize][i] = tmfcc[i];
 			}
 			
 
@@ -392,8 +392,8 @@ void Raskell::reset() {
 	reset_mfcc();
 
 	x.clear();
-	x.resize(xsize);
-	for (i=0; i<xsize; i++) {
+	x.resize(bsize);
+	for (i=0; i<bsize; i++) {
 		x[i].resize(params);
 	}
 
@@ -414,9 +414,9 @@ void Raskell::reset() {
 	}
 		
 	dtw.clear();
-	dtw.resize(xsize);
-	for (i=0; i<xsize; i++) {
-		dtw[i].resize(xsize);
+	dtw.resize(fsize);
+	for (i=0; i<fsize; i++) {
+		dtw[i].resize(fsize);
 		fill(dtw[i].begin(), dtw[i].end(), VERY_BIG);
 	}
 
@@ -452,7 +452,7 @@ void Raskell::input(long v) {
 	}
 	
 	if (input_sel == IN_LIVE) {
-		markers[m_count][0] = ysize-xsize; // add END marker
+		markers[m_count][0] = ysize-fsize; // add END marker
 		m_iter = 0; // start listening for event markers
 		iter = 0;
 	}
@@ -472,7 +472,7 @@ void Raskell::gotomarker(long v) {
 void Raskell::gotoms(long v) {
 	post("Starting from %i ms", v);
 	h = v * (double)(SampleRate / 1000.f / HOP_SIZE);
-	h_mod = h % xsize;
+	h_mod = h % fsize;
 	//t = h;
 	//t_mod = h_mod;
 }
@@ -581,30 +581,28 @@ void Raskell::init_dtw() {
 	outlet_int(max->out_h, h);
 	distance(t, h); // calculate Dist[t_mod][h_mod]
 
-	for (t_uint16 i=0; i<xsize; i++) {
-		for (t_uint16 j=0; j<xsize; j++) {
+	for (t_uint16 i=0; i<fsize; i++) {
+		for (t_uint16 j=0; j<fsize; j++) {
 			dtw[i][j] = VERY_BIG;
 		}
 	}
 	dtw[t_mod][h_mod] = Dist[t%bsize][h%bsize]; // initial starting point
-	
-	b_start = 2;
 
 	increment_t();
 	increment_h();
 }
 
 void Raskell::distance(t_uint16 i, t_uint16 j) {
-	t_uint16 k, xi = i%xsize, imod = i%bsize, jmod=j%bsize;
+	t_uint16 k, imod = i%bsize, jmod=j%bsize;
 	// build distance matrix
 	double total;
 	total = 0;
 
-	if ((x[xi][0]==0)||(y[j][0]==0)) { // if either is undefined
+	if ((x[imod][0]==0)||(y[j][0]==0)) { // if either is undefined
 		total = VERY_BIG;
 		//post("WARNING input is zero, t=%i h=%i", i, j);
 	} else for (k = 0; k < params; k++) {
-		total = total + ((x[xi][k] - y[j][k]) * (x[xi][k] - y[j][k])); // distance computation 
+		total = total + ((x[imod][k] - y[j][k]) * (x[imod][k] - y[j][k])); // distance computation 
 	}
 	if (total < 0.0001)
 		total = 0;
@@ -622,7 +620,7 @@ void Raskell::dtw_process() {
 	if(debug) post("next 1:row/2:column/3:both : %i", inc);
 
 	// it's possible to have several Y/h hikes for each X/t feature:
-	while((inc == NEW_ROW) && (h < ysize) && (h != markers[0][0] + xsize-1)) {
+	while((inc == NEW_ROW) && (h < ysize) && (h != markers[0][0] + fsize-1)) {
 		outlet_int(max->out_h, h);
 
 		if (t<bsize)	jstart = 0;
@@ -686,10 +684,10 @@ t_uint16 Raskell::get_inc() {
 
 	// helper function for online DTW, choose Row (h) / Column (t) incrementation
 	t_uint16 i, next = 0;
-	t_uint16 tmin1 = (t_mod+xsize-1) % xsize;
-	t_uint16 hmin1 = (h_mod+xsize-1) % xsize;
-	t_uint16 tmin2 = (t_mod+xsize-2) % xsize;
-	t_uint16 hmin2 = (h_mod+xsize-2) % xsize;
+	t_uint16 tmin1 = (t_mod+fsize-1) % fsize;
+	t_uint16 hmin1 = (h_mod+fsize-1) % fsize;
+	t_uint16 tmin2 = (t_mod+fsize-2) % fsize;
+	t_uint16 hmin2 = (h_mod+fsize-2) % fsize;
 	double min = VERY_BIG;
 
 	if (runCount > maxRunCount) {// tempo limit reached...
@@ -700,12 +698,12 @@ t_uint16 Raskell::get_inc() {
 			return NEW_ROW;
 	}
 
-	for (i=0; i<xsize; i++) // if minimum is in row h..
+	for (i=0; i<fsize; i++) // if minimum is in row h..
 		if(dtw[i][hmin1] < min) {
 			min = dtw[i][hmin1];
 			next = NEW_ROW; // ..then increment row next
 		}
-	for (i=0; i<xsize; i++) // if minimum is in column t..
+	for (i=0; i<fsize; i++) // if minimum is in column t..
 		if(dtw[tmin1][i] <= min) {
 			min = dtw[tmin1][i];
 			next = NEW_COL; // ..then increment column next
@@ -719,12 +717,12 @@ t_uint16 Raskell::get_inc() {
 void Raskell::calc_dtw(t_uint16 i, t_uint16 j) {
 	// calculate DTW matrix
 	double top, mid, bot, cheapest;
-	t_uint16 imin1 = (i+xsize-1) % xsize;
-	t_uint16 imin2 = (i+xsize-2) % xsize;
-	t_uint16 jmin1 = (j+xsize-1) % xsize;
-	t_uint16 jmin2 = (j+xsize-2) % xsize;
-	t_uint16 imod = i % xsize;
-	t_uint16 jmod = j % xsize;		
+	t_uint16 imin1 = (i+fsize-1) % fsize;
+	t_uint16 imin2 = (i+fsize-2) % fsize;
+	t_uint16 jmin1 = (j+fsize-1) % fsize;
+	t_uint16 jmin2 = (j+fsize-2) % fsize;
+	t_uint16 imod = i % fsize;
+	t_uint16 jmod = j % fsize;		
 
 	top = dtw[imin2][jmin1] + Dist[i%bsize][j%bsize] * side_weight;
 	mid = dtw[imin1][jmin1] + Dist[i%bsize][j%bsize] * mid_weight;
@@ -744,25 +742,26 @@ void Raskell::calc_dtw(t_uint16 i, t_uint16 j) {
 }
 
 void Raskell::dtw_back() {
+	short debug = 0;
 	b_start = t % bsize;
 	history[b_start] = h % bsize;
 	if (t >= bsize && h >= bsize) {
 		double top, mid, bot, cheapest;
 		t_uint16 i, j;
 		Deque.clear();		
-		post("b_start is %i", b_start);
+		if(debug) post("b_start is %i", b_start);
 		b_dtw[b_start][history[b_start]] = Dist[b_start][history[b_start]]; // starting point
 		b_move[b_start][history[b_start]] = NEW_BOTH;
 
-		// compute backwards DTW, and b_move
-		for (i = b_start+1 % bsize; i != b_start; i = (i+1) % bsize) {
-			for (j = history[b_start]+1 % bsize; j != history[b_start]; j = (j+1) % bsize) {
+		// compute backwards DTW (circular i--), and b_move
+		for (i = b_start+bsize-1 % bsize; i != b_start; i = (i+bsize-1) % bsize) { 
+			for (j = history[b_start]+bsize-1 % bsize; j != history[b_start]; j = (j+bsize-1) % bsize) { 
 				t_uint16 imod = i % bsize;
-				t_uint16 imin1 = (i+bsize-1) % bsize;		
-				t_uint16 imin2 = (i+bsize-2) % bsize;
+				t_uint16 imin1 = (i+1) % bsize;		
+				t_uint16 imin2 = (i+2) % bsize;
 				t_uint16 jmod = j % bsize;
-				t_uint16 jmin1 = (j+bsize-1) % bsize;
-				t_uint16 jmin2 = (j+bsize-2) % bsize;
+				t_uint16 jmin1 = (j+1) % bsize;
+				t_uint16 jmin2 = (j+2) % bsize;
 
 				top = b_dtw[imin2][jmin1] + Dist[imod][jmod] * side_weight;
 				mid = b_dtw[imin1][jmin1] + Dist[imod][jmod] * mid_weight;
@@ -780,26 +779,35 @@ void Raskell::dtw_back() {
 				b_dtw[imod][jmod] = cheapest;
 			}
 		}
-		i = b_start + 1 % bsize; 
-		j = history[b_start] + 1 % bsize; 
+		i = (b_start+bsize-1) % bsize; 
+		j = (history[b_start]+bsize-1) % bsize; 
 		int p = 0;
 		while (i != b_start && j != history[b_start]) {
 			if (b_move[i][j] == NEW_ROW) {
-				j = (j+1) % bsize;
+				j = (j+bsize-1) % bsize;
 			}
 			else if (b_move[i][j] == NEW_COL) {
-				i = (i+1) % bsize;
+				i = (i+bsize-1) % bsize;
 			}
 			else if (b_move[i][j] == NEW_BOTH) {
-				i = (i+1) % bsize; 
-				j = (j+1) % bsize;
+				i = (i+bsize-1) % bsize; 
+				j = (j+bsize-1) % bsize;
 			}
 			b_path[p][0] = i; b_path[p][1] = j;
 			p++;
 		}
+		// TODO: check how B-dtw destination relates to the regular dtw one:
+		if(debug) {
+			if (i == b_start && j == history[b_start]) {
+				post("path confirmed!");
+			} else if (i == b_start) {
+				post("T high");
+			} else post("H high");
+		}
+
 		double Min = VERY_BIG, Sum;
-		int K = p - 3, L = 10;
-		for (i = 0; i < K; i++) {
+		int K = 3, L = 10;
+		for (i = 0; i < p - K; i++) {
 			if (i < L) { // http://www.infoarena.ro/deque-si-aplicatii
 				bool popped = false;
 				while (!Deque.empty() && b_dtw[b_path[i][0]][b_path[i][1]] <= b_dtw[b_path[Deque.front()][0]][b_path[Deque.front()][1]] ) {
@@ -810,14 +818,16 @@ void Raskell::dtw_back() {
 			}
 			Sum = b_dtw[b_path[Deque.front()][0]][b_path[Deque.front()][1]] + b_dtw[b_path[i+K][0]][b_path[i+K][1]];
 			if (Sum < Min) {
-				Min = Sum;
+				tempo_prob = Min = Sum;
 				pivot1_t = b_path[Deque.front()][0];
 				pivot1_h = b_path[Deque.front()][1];
 				pivot2_t = b_path[i+K][0];
 				pivot2_h = b_path[i+K][1];
+				// recover wrap around bsize:
+				if (pivot1_t < pivot2_t) pivot1_t += bsize;
+				if (pivot1_h < pivot2_h) pivot1_h += bsize;
 			}
 		}
-
 	}
 }
 
@@ -840,12 +850,12 @@ void Raskell::increment_t() {/*
 
 	// move on to next t
 	t++;
-	t_mod = (t_mod+1)%xsize;
+	t_mod = (t_mod+1)%fsize;
 }
 
 void Raskell::increment_h() {
 	h++;
-	h_mod = (h_mod+1)%xsize;
+	h_mod = (h_mod+1)%fsize;
 	if (h == markers[m_iter][0]) {
 		markers[m_iter][M_LIVE] = t; // marker detected at time "t"
 		post("marker detected at t = %i, h = %i", t, h);
@@ -947,7 +957,7 @@ bool Raskell::read_line() {
 		if(length > (params+1) && input_sel != IN_LIVE) {
 			post("NOTE: number of params increased to %i", params);
 			params = length-1; // set number of parameters (increase if necessary)
-			for (i=0; i<xsize; i++) {
+			for (i=0; i<bsize; i++) {
 				x[i].resize(params);
 			}
 			for (i=0; i<ysize; i++) {
@@ -1051,7 +1061,7 @@ void Raskell::do_write(t_symbol *s) {
 		filetype = 'CSV';
 		strcpy(filename, "trace");
 		buf+="Parameters:, DTW size, FFT size, FFT hop, ALPHA\n,";
-		buf+= to_string((long long)xsize) + ", " + to_string((long long)WINDOW_SIZE) + 
+		buf+= to_string((long long)fsize) + ", " + to_string((long long)WINDOW_SIZE) + 
 			", " + to_string((long long)HOP_SIZE) + ", " + to_string((long long)ALPHA);
 		
 		buf+="\nMarker Trace Results for," + score_name + ", vs, " + live_name;
