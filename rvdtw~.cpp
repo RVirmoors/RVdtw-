@@ -569,7 +569,6 @@ void Raskell::calc_mfcc(t_uint16 frame_to_fft) {
 		//take log
 		logEnergy[i] = log10(logEnergy[i]);
 	}
-	
 	//take DCT
 	fftw_execute(dct);
 }
@@ -590,6 +589,8 @@ void Raskell::init_dtw() {
 
 	increment_t();
 	increment_h();
+	history[1] = 1;
+	outlet_float(max->out_tempo, 1);
 }
 
 void Raskell::distance(t_uint16 i, t_uint16 j) {
@@ -742,7 +743,7 @@ void Raskell::calc_dtw(t_uint16 i, t_uint16 j) {
 }
 
 void Raskell::dtw_back() {
-	short debug = 0;
+	short debug = 1;
 	b_start = t % bsize;
 	history[b_start] = h % bsize;
 	if (t >= bsize && h >= bsize) {
@@ -780,8 +781,9 @@ void Raskell::dtw_back() {
 			}
 		}
 		i = (b_start+bsize-1) % bsize; 
-		j = (history[b_start]+bsize-1) % bsize; 
-		int p = 0;
+		j = (history[b_start]+bsize-1) % bsize;
+		b_path[0][0] = i; b_path[0][1] = j;
+		int p = 1;
 		while (i != b_start && j != history[b_start]) {
 			if (b_move[i][j] == NEW_ROW) {
 				j = (j+bsize-1) % bsize;
@@ -804,11 +806,14 @@ void Raskell::dtw_back() {
 				post("T high");
 			} else post("H high");
 		}
-
-		double Min = VERY_BIG, Sum;
-		int K = 3, L = 10;
-		for (i = 0; i < p - K; i++) {
-			if (i < L) { // http://www.infoarena.ro/deque-si-aplicatii
+		// get tempo pivots from history via deque: http://www.infoarena.ro/deque-si-aplicatii
+		// first pivot is within L steps from path origin
+		// 2nd pivot is at least K steps away from 1st, AND minimizes SUM(b_dtw[pivots])
+		static double Min = VERY_BIG, Sum;
+		bool new_tempo = false;
+		int K = 10, L = 3;
+		for (i = 0; i < (p - K); i++) {
+			if (i < L) {
 				bool popped = false;
 				while (!Deque.empty() && b_dtw[b_path[i][0]][b_path[i][1]] <= b_dtw[b_path[Deque.front()][0]][b_path[Deque.front()][1]] ) {
 					Deque.pop_front();   
@@ -816,7 +821,8 @@ void Raskell::dtw_back() {
 				}
 				if (popped || Deque.empty()) Deque.push_front(i);
 			}
-			Sum = b_dtw[b_path[Deque.front()][0]][b_path[Deque.front()][1]] + b_dtw[b_path[i+K][0]][b_path[i+K][1]];
+			Sum = b_dtw[b_path[Deque.front()][0]][b_path[Deque.front()][1]] + 
+				b_dtw[b_path[i+K][0]][b_path[i+K][1]];
 			if (Sum < Min) {
 				tempo_prob = Min = Sum;
 				pivot1_t = b_path[Deque.front()][0];
@@ -826,29 +832,20 @@ void Raskell::dtw_back() {
 				// recover wrap around bsize:
 				if (pivot1_t < pivot2_t) pivot1_t += bsize;
 				if (pivot1_h < pivot2_h) pivot1_h += bsize;
+				new_tempo = true;
 			}
 		}
+		if (new_tempo) {
+			// compute and output tempo
+			tempo = (float)(pivot1_h - pivot2_h) / (float)(pivot1_t - pivot2_t);
+			outlet_float(max->out_tempo, tempo);
+		}
+		Min += b_dtw[(b_start+bsize-1) % bsize][(history[b_start]+bsize-1) % bsize];
+		// slowly grow Min so that it can be reached again
 	}
 }
 
-void Raskell::increment_t() {/*
-	history[t_mod] = h;
-	// calculate tempo multiplier based on window history:
-	if (t == 0) tempo = 1;
-	else {
-		if (t < xsize) {
-			t_uint16 start = 0;
-			tempo = (float)(history[t_mod] - history[start]) / (float)(t);
-		}
-		else {
-			t_uint16 start = (t_mod+1)%xsize;
-			tempo = (float)(history[t_mod] - history[start]) / (float)(xsize-1);
-		}
-	}
-
-	outlet_float(max->out_tempo, tempo);*/
-
-	// move on to next t
+void Raskell::increment_t() {
 	t++;
 	t_mod = (t_mod+1)%fsize;
 }
