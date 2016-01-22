@@ -1,7 +1,5 @@
 #include <rvdtw~.h>
 
-// TO DO: check marker detection, write result markers[x][2]
-
 extern "C"
 {
 
@@ -743,7 +741,7 @@ void Raskell::calc_dtw(t_uint16 i, t_uint16 j) {
 }
 
 void Raskell::dtw_back() {
-	short debug = 1;
+	short debug = 0;
 	b_start = t % bsize;
 	history[b_start] = h % bsize;
 	if (t >= bsize && h >= bsize) {
@@ -990,7 +988,7 @@ double Raskell::compress(double value, bool active) {
 			float ratio = (COMP_RELEASE - timer) / COMP_RELEASE * (COMP_RATIO-1) + 1;
 			value = COMP_THRESH + (value - COMP_THRESH) * ratio;
 			timer++;
-			//post("RELEASING %i value: %.2f", timer, value);
+			post("RELEASING %i value: %.2f", timer, value);
 		}		
 	}
 	if (value > 0) value == 0;
@@ -1044,7 +1042,7 @@ void Raskell::do_write(t_symbol *s) {
 	// prepare buffer
 	long long i, j;
 	string buf = "";
-	if (input_sel != IN_LIVE) { // in SCORE mode, save the score
+	if (input_sel == IN_SCORE) { // in SCORE mode, save the score
 		strcpy(filename, "score.txt");
 		for (i = 0; i < ysize; i++) {
 			buf += to_string(i) + ",";

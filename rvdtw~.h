@@ -1,4 +1,4 @@
-#define RV_VERSION 0.1
+#define RV_VERSION 0.2
 // TO DO: read in chunks
 // TO DO: goto h
 
@@ -17,22 +17,25 @@
 #include <deque>
 #include <sstream>
 
-
-#define	fsize 8//32 // DTW window length (# of input frames)
-#define bsize 16//128 // backwards DTW win length
+// FFT params
+#define	fsize 128//32 // DTW window length (# of input frames)
+#define bsize 128//128 // backwards DTW win length
 #define WINDOW_SIZE 2048
 #define HOP_SIZE 512
 
+// DTW params
 #define MAXLENGTH 5000000 //maximum input file length (# of frames)
 #define VERY_BIG  (1e10)
-#define THRESH 0 //0.4 // base threshold for marker admission
+//#define THRESH 0 //0.4 // base threshold for marker admission
 #define MAX_RUN 50000  //3 //5000
-#define ALPHA 0//1 //100
+#define ALPHA 1//1 //100
 
-#define COMP_THRESH -140
+// compression params
+#define COMP_THRESH 20//-140
 #define COMP_RELEASE 4
 #define COMP_RATIO 2
 
+// int defines
 #define NEW_ROW 1
 #define NEW_COL 2
 #define NEW_BOTH 3
