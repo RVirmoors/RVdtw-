@@ -980,18 +980,18 @@ bool Raskell::read_line() {
 double Raskell::compress(double value, bool active) {
 	static t_uint16 timer = 1;
 	if (active) {
-		value = COMP_THRESH + (value - COMP_THRESH) * COMP_RATIO;
+		value = (value - COMP_THRESH) / COMP_RATIO;
 		timer = 1;
 	}		
 	else {
 		if (timer < COMP_RELEASE) {
-			float ratio = (COMP_RELEASE - timer) / COMP_RELEASE * (COMP_RATIO-1) + 1;
-			value = COMP_THRESH + (value - COMP_THRESH) * ratio;
+			float ratio = timer * COMP_RATIO;
+			value = (value - COMP_THRESH) / ratio;
 			timer++;
 			post("RELEASING %i value: %.2f", timer, value);
 		}		
 	}
-	if (value > 0) value == 0;
+	if (value > 0) value = 0.1; // upper thresh
 	return value;
 }
 

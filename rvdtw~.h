@@ -31,9 +31,9 @@
 #define ALPHA 1//1 //100
 
 // compression params
-#define COMP_THRESH 20//-140
-#define COMP_RELEASE 4
-#define COMP_RATIO 2
+#define COMP_THRESH -140
+#define COMP_RELEASE 2
+#define COMP_RATIO 8
 
 // int defines
 #define NEW_ROW 1
