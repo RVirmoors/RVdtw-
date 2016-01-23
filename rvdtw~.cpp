@@ -612,6 +612,80 @@ void Raskell::distance(t_uint16 i, t_uint16 j) {
 	//post("Dist[%i][%i] = %f", imod, jmod, total);
 }
 
+t_uint16 Raskell::get_inc() {
+	if (!follow) return NEW_BOTH; // if alignment is OFF, just go diagonally
+
+	// helper function for online DTW, choose Row (h) / Column (t) incrementation
+	t_uint16 i, next = 0;
+	t_uint16 tmin1 = (t_mod+fsize-1) % fsize;
+	t_uint16 hmin1 = (h_mod+fsize-1) % fsize;
+	t_uint16 tmin2 = (t_mod+fsize-2) % fsize;
+	t_uint16 hmin2 = (h_mod+fsize-2) % fsize;
+	double min = VERY_BIG;
+
+	int difhist = history[(t + bsize - 1) % bsize] - history[(t + bsize - MAX_RUN) % bsize];
+
+	if (runCount > maxRunCount || (difhist > 0 && difhist < (MAX_RUN / 8))) {
+		// tempo limit reached...
+		post("MAXRUNCOUNT %i", difhist);
+		if (previous == NEW_ROW)
+			return NEW_COL;
+		else {
+			if (h > (bsize + MAX_RUN)) {
+				// NEW version
+				decrease_h();
+				return NEW_COL;
+			}
+			else
+				return NEW_ROW; // CLASSIC version
+		}				
+	}
+
+	for (i=0; i<fsize; i++) // if minimum is in row h..
+		if(dtw[i][hmin1] < min) {
+			min = dtw[i][hmin1];
+			next = NEW_ROW; // ..then increment row next
+		}
+	for (i=0; i<fsize; i++) // if minimum is in column t..
+		if(dtw[tmin1][i] <= min) {
+			min = dtw[tmin1][i];
+			next = NEW_COL; // ..then increment column next
+		}
+	if(dtw[tmin1][hmin1] <= min) // otherwise...
+		next = NEW_BOTH; // ... increment BOTH.
+	
+	//post("min: %f", min);
+
+	return next;
+}
+
+void Raskell::calc_dtw(t_uint16 i, t_uint16 j) {
+	// calculate DTW matrix
+	double top, mid, bot, cheapest;
+	t_uint16 imin1 = (i+fsize-1) % fsize;
+	t_uint16 imin2 = (i+fsize-2) % fsize;
+	t_uint16 jmin1 = (j+fsize-1) % fsize;
+	t_uint16 jmin2 = (j+fsize-2) % fsize;
+	t_uint16 imod = i % fsize;
+	t_uint16 jmod = j % fsize;		
+
+	top = dtw[imin2][jmin1] + Dist[i%bsize][j%bsize] * side_weight;
+	mid = dtw[imin1][jmin1] + Dist[i%bsize][j%bsize] * mid_weight;
+	bot = dtw[imin1][jmin2] + Dist[i%bsize][j%bsize] * side_weight;
+
+	if( (top < mid) && (top < bot))	{ 
+		cheapest = top;
+		}
+	else if (mid <= bot) {
+		cheapest = mid;
+		}
+	else { 
+		cheapest = bot;
+		}
+	dtw[imod][jmod] = cheapest;
+	//post("dtw[%i][%i] = %f", i, j, cheapest);
+}
+
 void Raskell::dtw_process() {
 	short debug = 0;
 	t_uint16 inc = get_inc();
@@ -631,7 +705,7 @@ void Raskell::dtw_process() {
 			calc_dtw(j, h); // calc DTW for new row
 		}
 		increment_h();
-		previous = 1;
+		previous = NEW_ROW;
 		runCount++;
 		inc = get_inc(); // get new inc
 		if(debug) post("HAP! next 1:row/2:column/3:both : %i", inc);
@@ -676,68 +750,6 @@ void Raskell::dtw_process() {
 	//	input(0);
 		RVdtw_stop(max, 0);
 	}
-}
-
-t_uint16 Raskell::get_inc() {
-	if (!follow) return NEW_BOTH; // if alignment is OFF, just go diagonally
-
-	// helper function for online DTW, choose Row (h) / Column (t) incrementation
-	t_uint16 i, next = 0;
-	t_uint16 tmin1 = (t_mod+fsize-1) % fsize;
-	t_uint16 hmin1 = (h_mod+fsize-1) % fsize;
-	t_uint16 tmin2 = (t_mod+fsize-2) % fsize;
-	t_uint16 hmin2 = (h_mod+fsize-2) % fsize;
-	double min = VERY_BIG;
-
-	if (runCount > maxRunCount) {// tempo limit reached...
-		post("MAXRUNCOUNT");
-		if (previous == NEW_ROW)
-			return NEW_COL;
-		else
-			return NEW_ROW;
-	}
-
-	for (i=0; i<fsize; i++) // if minimum is in row h..
-		if(dtw[i][hmin1] < min) {
-			min = dtw[i][hmin1];
-			next = NEW_ROW; // ..then increment row next
-		}
-	for (i=0; i<fsize; i++) // if minimum is in column t..
-		if(dtw[tmin1][i] <= min) {
-			min = dtw[tmin1][i];
-			next = NEW_COL; // ..then increment column next
-		}
-	if(dtw[tmin1][hmin1] <= min) // otherwise...
-		next = NEW_BOTH; // ... increment BOTH.
-	//post("min: %f", min);
-	return next;
-}
-
-void Raskell::calc_dtw(t_uint16 i, t_uint16 j) {
-	// calculate DTW matrix
-	double top, mid, bot, cheapest;
-	t_uint16 imin1 = (i+fsize-1) % fsize;
-	t_uint16 imin2 = (i+fsize-2) % fsize;
-	t_uint16 jmin1 = (j+fsize-1) % fsize;
-	t_uint16 jmin2 = (j+fsize-2) % fsize;
-	t_uint16 imod = i % fsize;
-	t_uint16 jmod = j % fsize;		
-
-	top = dtw[imin2][jmin1] + Dist[i%bsize][j%bsize] * side_weight;
-	mid = dtw[imin1][jmin1] + Dist[i%bsize][j%bsize] * mid_weight;
-	bot = dtw[imin1][jmin2] + Dist[i%bsize][j%bsize] * side_weight;
-
-	if( (top < mid) && (top < bot))	{ 
-		cheapest = top;
-		}
-	else if (mid <= bot) {
-		cheapest = mid;
-		}
-	else { 
-		cheapest = bot;
-		}
-	dtw[imod][jmod] = cheapest;
-	//post("dtw[%i][%i] = %f", i, j, cheapest);
 }
 
 void Raskell::dtw_back() {
@@ -864,8 +876,43 @@ void Raskell::increment_h() {
 			//input(0);
 			RVdtw_stop(max, 0);
 		}
-			
 	}
+}
+
+void Raskell::decrease_h() {
+	post("moving h back %i steps", MAX_RUN);
+	vector<double> diff;
+	long i, j, ends;
+	long begin = h - MAX_RUN + 1;
+	ends = MAX_RUN / 4;
+
+	// make phantom y continuous with existing y
+	diff.clear();
+	diff.resize(params);
+	for(i = 0; i < params; i++) {
+		for(j = 0; j < ends; j++)
+			diff[i] += (y[h-j][i] - y[begin+j][i]);
+		diff[i] /= ends;
+	}
+	for(long k = begin; k <= h; k++) {
+		for(i = 0; i < params; i++)
+			y[k][i] += diff[i];
+	}
+	
+	while(h > begin) {
+		if (m_iter && h == markers[m_iter-1][0])
+			m_iter--; // cancel any markers
+		h--;
+	}
+	h_mod = h%fsize;
+
+	for(i = t-bsize; i < t; i++)
+		for(j = h-bsize; j < h; j++) {
+			distance(i, j); // calculate distance 
+			calc_dtw(i, j); // calc DTW cost
+		}
+
+
 }
 
 // ========================= FILE i/o =================
@@ -979,19 +1026,22 @@ bool Raskell::read_line() {
 
 double Raskell::compress(double value, bool active) {
 	static t_uint16 timer = 1;
-	if (active) {
-		value = (value - COMP_THRESH) / COMP_RATIO;
-		timer = 1;
-	}		
-	else {
-		if (timer < COMP_RELEASE) {
-			float ratio = timer * COMP_RATIO;
-			value = (value - COMP_THRESH) / ratio;
-			timer++;
-			post("RELEASING %i value: %.2f", timer, value);
+	if (value > 0) {	// upper thresh (limiter)
+		value = -COMP_THRESH / COMP_RATIO;
+	} else {			// lower thresh
+		if (active) {
+			value = (value - COMP_THRESH) / COMP_RATIO;
+			timer = 1;
 		}		
+		else {
+			if (timer < COMP_RELEASE) {
+				float ratio = timer * COMP_RATIO;
+				value = (value - COMP_THRESH) / ratio;
+				timer++;
+				//post("RELEASING %i value: %.2f", timer, value);
+			}		
+		}
 	}
-	if (value > 0) value = 0.1; // upper thresh
 	return value;
 }
 
@@ -1055,10 +1105,14 @@ void Raskell::do_write(t_symbol *s) {
 	else { // in LIVE mode, save the test results
 		filetype = 'CSV';
 		strcpy(filename, "trace");
-		buf+="Parameters:, DTW size, FFT size, FFT hop, ALPHA\n,";
-		buf+= to_string((long long)fsize) + ", " + to_string((long long)WINDOW_SIZE) + 
-			", " + to_string((long long)HOP_SIZE) + ", " + to_string((long long)ALPHA);
-		
+		buf+="Parameters:, DTW size, B-DTW size, FFT size, FFT hop, ALPHA, MAX_RUN, COMP_THRESH\n,";
+		buf+= to_string((long long)fsize) + ", " +
+			to_string((long long)bsize) + ", " +
+			to_string((long long)WINDOW_SIZE) + ", " + 
+			to_string((long long)HOP_SIZE) + ", " + 
+			to_string((long long)ALPHA) + ", " + 
+			to_string((long long)MAX_RUN) + ", " + 
+			to_string((long long)COMP_THRESH);		
 		buf+="\nMarker Trace Results for," + score_name + ", vs, " + live_name;
 		buf+="\nID, Score pos, HOOK, Live ideal, Live detected";
 		for (i = 0; i <= m_count; i++) {

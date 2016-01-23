@@ -18,8 +18,8 @@
 #include <sstream>
 
 // FFT params
-#define	fsize 128//32 // DTW window length (# of input frames)
-#define bsize 128//128 // backwards DTW win length
+#define	fsize 128// 128//32 // DTW window length (# of input frames)
+#define bsize 128//128 // backwards DTW win length; should be larger than fsize
 #define WINDOW_SIZE 2048
 #define HOP_SIZE 512
 
@@ -27,8 +27,8 @@
 #define MAXLENGTH 5000000 //maximum input file length (# of frames)
 #define VERY_BIG  (1e10)
 //#define THRESH 0 //0.4 // base threshold for marker admission
-#define MAX_RUN 50000  //3 //5000
-#define ALPHA 1//1 //100
+#define MAX_RUN 64//50000  //3  minimum 4; should not surpass fsize
+#define ALPHA 1//1
 
 // compression params
 #define COMP_THRESH -140
@@ -169,13 +169,14 @@ public:
 
 	// DTW methods:
 	void init_dtw();
-	void distance(t_uint16 i, t_uint16 j);
-	void dtw_process();
+	void distance(t_uint16 i, t_uint16 j);	
 	t_uint16 get_inc();
 	void calc_dtw(t_uint16 i, t_uint16 j);
+	void dtw_process();
 	double compress(double value, bool active);
 	void increment_t();
 	void increment_h();
+	void decrease_h();
 	void dtw_back();
 
 	// file input / output methods:
