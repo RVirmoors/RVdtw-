@@ -223,7 +223,7 @@ Raskell::Raskell() {
 		input_sel = IN_SCORE; // 1 = SCORE; 2 = LIVE; 0 = closed		
 		follow = TRUE;
 
-		mid_weight = 1.9; //1.5
+		mid_weight = 1; //0.5; //1.9; //1.5
 		side_weight = 1; //1
 
 		maxRunCount = MAX_RUN; // tempo between 1/x and x
@@ -624,7 +624,7 @@ t_uint16 Raskell::get_inc() {
 	double min = VERY_BIG;
 
 	int difhist = history[(t + bsize - 1) % bsize] - history[(t + bsize - MAX_RUN) % bsize];
-
+	
 	if (runCount > maxRunCount || (difhist > 0 && difhist < (MAX_RUN / 8))) {
 		// tempo limit reached...
 		post("MAXRUNCOUNT %i", difhist);
@@ -633,14 +633,14 @@ t_uint16 Raskell::get_inc() {
 		else {
 			if (h > (bsize + MAX_RUN)) {
 				// NEW version
-				decrease_h();
-				return NEW_COL;
+				if (decrease_h())
+					return NEW_COL;
 			}
-			else
-				return NEW_ROW; // CLASSIC version
+//			else
+//				return NEW_ROW; // CLASSIC version
 		}				
 	}
-
+	
 	for (i=0; i<fsize; i++) // if minimum is in row h..
 		if(dtw[i][hmin1] < min) {
 			min = dtw[i][hmin1];
@@ -879,11 +879,17 @@ void Raskell::increment_h() {
 	}
 }
 
-void Raskell::decrease_h() {
-	post("moving h back %i steps", MAX_RUN);
+bool Raskell::decrease_h() {
 	vector<double> diff;
 	long i, j, ends;
 	long begin = h - MAX_RUN + 1;
+	static long min_begin = begin;
+	if (begin < min_begin) 
+		return false;
+	else
+		min_begin = begin;
+
+	post("moving h back %i steps", MAX_RUN);
 	ends = MAX_RUN / 4;
 
 	// make phantom y continuous with existing y
@@ -911,8 +917,7 @@ void Raskell::decrease_h() {
 			distance(i, j); // calculate distance 
 			calc_dtw(i, j); // calc DTW cost
 		}
-
-
+	return true;
 }
 
 // ========================= FILE i/o =================

@@ -28,7 +28,7 @@
 #define VERY_BIG  (1e10)
 //#define THRESH 0 //0.4 // base threshold for marker admission
 #define MAX_RUN 64//50000  //3  minimum 4; should not surpass fsize
-#define ALPHA 1//1
+#define ALPHA 1
 
 // compression params
 #define COMP_THRESH -140
@@ -176,7 +176,7 @@ public:
 	double compress(double value, bool active);
 	void increment_t();
 	void increment_h();
-	void decrease_h();
+	bool decrease_h();
 	void dtw_back();
 
 	// file input / output methods:
