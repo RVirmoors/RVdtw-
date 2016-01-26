@@ -224,7 +224,7 @@ Raskell::Raskell() {
 		input_sel = IN_SCORE; // 1 = SCORE; 2 = LIVE; 0 = closed		
 		follow = TRUE;
 
-		mid_weight = 1; //0.5; //1.9; //1.5
+		mid_weight = 0.5; //0.5; //1.9; //1.5
 		side_weight = 1; //1
 
 		maxRunCount = MAX_RUN; // tempo between 1/x and x
@@ -626,9 +626,9 @@ t_uint16 Raskell::get_inc() {
 
 	int difhist = history[(t + bsize - 1) % bsize] - history[(t + bsize - MAX_RUN) % bsize];
 	
-	if (runCount > maxRunCount || (difhist > 0 && difhist < (MAX_RUN / 8))) {
+	if (runCount > maxRunCount || (difhist < (MAX_RUN / 8))) {
 		// tempo limit reached...
-		post("MAXRUNCOUNT h = %i", h);
+		post("MAXRUNCOUNT h = %i, previous = %i", h, previous);
 		if (previous == NEW_ROW)
 			return NEW_COL;
 		else {
@@ -759,7 +759,7 @@ void Raskell::dtw_back() {
 	b_start = t % bsize;	
 	bh_start = h % bsize;
 	history[b_start] = h;
-	if (t >= bsize && h >= bsize) {
+	if (t >= bsize && h >= bsize && (t % 2) ) {
 		double top, mid, bot, cheapest;
 		t_uint16 i, j;
 		Deque.clear();		

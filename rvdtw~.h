@@ -20,7 +20,7 @@
 
 // FFT params
 #define	fsize 128// 128//32 // DTW window length (# of input frames)
-#define bsize 128//128 // backwards DTW win length; should be larger than fsize
+#define bsize 512//128 // backwards DTW win length; should be larger than fsize
 #define WINDOW_SIZE 2048
 #define HOP_SIZE 512
 
@@ -37,6 +37,7 @@
 #define COMP_RATIO 8
 
 // int defines
+// previous dtw step:
 #define NEW_ROW 1
 #define NEW_COL 2
 #define NEW_BOTH 3
