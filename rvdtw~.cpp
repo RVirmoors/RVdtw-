@@ -218,6 +218,7 @@ Raskell::Raskell() {
 	
 		ysize = t = h = runCount = iter = m_iter = m_ideal_iter = t_mod = h_mod = 0; // current position for online DTW: (t,h)
 		tempo = 1;
+		prev_dtw = cur_dtw = dtw_certainty = 0;
 		m_count = 0; // one marker is mandatory (to start)
 		previous = 0; // 0 = none; 1 = Row; 2 = Column; 3 = Both
 		input_sel = IN_SCORE; // 1 = SCORE; 2 = LIVE; 0 = closed		
@@ -357,7 +358,7 @@ void Raskell::score_size(long v) {
 		markers.clear();
 		markers.resize(ysize);
 		for (i=0; i<ysize; i++)
-			markers[i].resize(4); // 0: scored, 1: hook 0/1, 2: live ideal, 3: live detected
+			markers[i].resize(5); // 0: scored, 1: certainty, 2: c2, 3: live ideal, 4: live detected
 	}
 	else post("wrong/missing length");	
 }
@@ -367,7 +368,7 @@ void Raskell::marker(t_symbol * s) {
 	if ((input_sel == IN_SCORE) && ysize) {
 		markers[m_iter][M_SCORED] = iter; // new marker at position iter
 		post("Marker entered at position %i", iter);
-		markers[m_iter][M_HOOK] = (t_uint16)s;// ? atom_getlong(av) : 0;
+		//markers[m_iter][M_HOOK] = (t_uint16)s;// ? atom_getlong(av) : 0;
 		//post("MARKER_HOOK: %i", markers[m_iter][1]);
 		m_count++;
 		m_iter++;
@@ -627,7 +628,7 @@ t_uint16 Raskell::get_inc() {
 	
 	if (runCount > maxRunCount || (difhist > 0 && difhist < (MAX_RUN / 8))) {
 		// tempo limit reached...
-		post("MAXRUNCOUNT %i", difhist);
+		post("MAXRUNCOUNT h = %i", h);
 		if (previous == NEW_ROW)
 			return NEW_COL;
 		else {
@@ -661,6 +662,7 @@ t_uint16 Raskell::get_inc() {
 
 void Raskell::calc_dtw(t_uint16 i, t_uint16 j) {
 	// calculate DTW matrix
+	prev_dtw = cur_dtw;
 	double top, mid, bot, cheapest;
 	t_uint16 imin1 = (i+fsize-1) % fsize;
 	t_uint16 imin2 = (i+fsize-2) % fsize;
@@ -682,7 +684,7 @@ void Raskell::calc_dtw(t_uint16 i, t_uint16 j) {
 	else { 
 		cheapest = bot;
 		}
-	dtw[imod][jmod] = cheapest;
+	dtw[imod][jmod] = cur_dtw = cheapest;	
 	//post("dtw[%i][%i] = %f", i, j, cheapest);
 }
 
@@ -754,19 +756,20 @@ void Raskell::dtw_process() {
 
 void Raskell::dtw_back() {
 	short debug = 0;
-	b_start = t % bsize;
-	history[b_start] = h % bsize;
+	b_start = t % bsize;	
+	bh_start = h % bsize;
+	history[b_start] = h;
 	if (t >= bsize && h >= bsize) {
 		double top, mid, bot, cheapest;
 		t_uint16 i, j;
 		Deque.clear();		
 		if(debug) post("b_start is %i", b_start);
-		b_dtw[b_start][history[b_start]] = Dist[b_start][history[b_start]]; // starting point
-		b_move[b_start][history[b_start]] = NEW_BOTH;
+		b_dtw[b_start][bh_start] = Dist[b_start][bh_start]; // starting point
+		b_move[b_start][bh_start] = NEW_BOTH;
 
 		// compute backwards DTW (circular i--), and b_move
 		for (i = b_start+bsize-1 % bsize; i != b_start; i = (i+bsize-1) % bsize) { 
-			for (j = history[b_start]+bsize-1 % bsize; j != history[b_start]; j = (j+bsize-1) % bsize) { 
+			for (j = bh_start+bsize-1 % bsize; j != bh_start; j = (j+bsize-1) % bsize) { 
 				t_uint16 imod = i % bsize;
 				t_uint16 imin1 = (i+1) % bsize;		
 				t_uint16 imin2 = (i+2) % bsize;
@@ -791,10 +794,10 @@ void Raskell::dtw_back() {
 			}
 		}
 		i = (b_start+bsize-1) % bsize; 
-		j = (history[b_start]+bsize-1) % bsize;
+		j = (bh_start+bsize-1) % bsize;
 		b_path[0][0] = i; b_path[0][1] = j;
 		int p = 1;
-		while (i != b_start && j != history[b_start]) {
+		while (i != b_start && j != bh_start) {
 			if (b_move[i][j] == NEW_ROW) {
 				j = (j+bsize-1) % bsize;
 			}
@@ -808,9 +811,10 @@ void Raskell::dtw_back() {
 			b_path[p][0] = i; b_path[p][1] = j;
 			p++;
 		}
-		// TODO: check how B-dtw destination relates to the regular dtw one:
+		//dtw_certainty = b_dtw[b_path[p-1][0]][b_path[p-1][1]] * 10 / p;
+		// TODO: check how B-dtw destination relates to the main dtw one:
 		if(debug) {
-			if (i == b_start && j == history[b_start]) {
+			if (i == b_start && j == bh_start) {
 				post("path confirmed!");
 			} else if (i == b_start) {
 				post("T high");
@@ -850,7 +854,7 @@ void Raskell::dtw_back() {
 			tempo = (float)(pivot1_h - pivot2_h) / (float)(pivot1_t - pivot2_t);
 			outlet_float(max->out_tempo, tempo);
 		}
-		Min += b_dtw[(b_start+bsize-1) % bsize][(history[b_start]+bsize-1) % bsize];
+		Min += b_dtw[(b_start+bsize-1) % bsize][(bh_start+bsize-1) % bsize];
 		// slowly grow Min so that it can be reached again
 	}
 }
@@ -865,6 +869,8 @@ void Raskell::increment_h() {
 	h_mod = (h_mod+1)%fsize;
 	if (h == markers[m_iter][0]) {
 		markers[m_iter][M_LIVE] = t; // marker detected at time "t"
+		markers[m_iter][M_HOOK] = dtw_certainty;
+		markers[m_iter][M_CERT] = cur_dtw - prev_dtw;
 		post("marker detected at t = %i, h = %i", t, h);
 		atom_setsym(dump, gensym("marker"));
 		atom_setlong(dump+1, m_iter);
@@ -1119,10 +1125,10 @@ void Raskell::do_write(t_symbol *s) {
 			to_string((long long)MAX_RUN) + ", " + 
 			to_string((long long)COMP_THRESH);		
 		buf+="\nMarker Trace Results for," + score_name + ", vs, " + live_name;
-		buf+="\nID, Score pos, HOOK, Live ideal, Live detected";
+		buf+="\nID, Score pos, Certainty, c2, Live ideal, Live detected";
 		for (i = 0; i <= m_count; i++) {
 			buf += "\n" + to_string(i);
-			for (j = 0; j < 4; j++)
+			for (j = 0; j < 5; j++)
 				buf += ", " + to_string((long long)markers[i][j]);
 		}
 	}

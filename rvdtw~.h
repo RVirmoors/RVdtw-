@@ -1,6 +1,7 @@
 #define RV_VERSION 0.2
 // TO DO: read in chunks
 // TO DO: goto h
+// TO DO: dtw_certainty = difference between b_dtw and history
 
 #include "ext.h"			// standard Max include, always required (except in Jitter)
 #include "ext_obex.h"		// required for "new" style objects
@@ -45,8 +46,9 @@
 
 #define M_SCORED 0
 #define M_HOOK 1
-#define M_IDEAL 2
-#define M_LIVE 3
+#define M_CERT 2
+#define M_IDEAL 3
+#define M_LIVE 4
 
 using namespace std;
 
@@ -111,14 +113,15 @@ public:
 	vector<vector<double> > b_path;
 	vector<vector<double> > Dist, dtw, b_dtw, b_move;
 	deque<double> Deque;
-	t_uint16 b_start;
+	t_uint16 b_start, bh_start;
 	float mid_weight, side_weight;
 	bool follow;
 
-	vector<vector<t_uint16> > markers;
+	vector<vector<double> > markers;
 	float tempo;
 	t_uint16 pivot1_t, pivot1_h, pivot2_t, pivot2_h;
 	double tempo_prob;
+	double dtw_certainty, cur_dtw, prev_dtw;
 
 	t_uint16 runCount, maxRunCount, m_iter, m_ideal_iter, m_count, input_sel;
 	t_atom dump[50];
