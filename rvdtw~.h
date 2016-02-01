@@ -1,7 +1,12 @@
+// rvdtw~.h
+//
+// 2014-2016 Grigore Burloiu
+
 #define RV_VERSION 0.2
 // TO DO: read in chunks
 // TO DO: goto h
 // TO DO: dtw_certainty = difference between b_dtw and history
+// TO DO: maybe certainty = small with small or very large dist() (plateaus / lost)
 
 #include "ext.h"			// standard Max include, always required (except in Jitter)
 #include "ext_obex.h"		// required for "new" style objects
@@ -19,7 +24,7 @@
 #include <sstream>
 
 // FFT params
-#define	fsize 128// 128//32 // DTW window length (# of input frames)
+#define	fsize 128//32 // DTW window length (# of input frames)
 #define bsize 512//128 // backwards DTW win length; should be larger than fsize
 #define WINDOW_SIZE 2048
 #define HOP_SIZE 512
@@ -28,8 +33,9 @@
 #define MAXLENGTH 5000000 //maximum input file length (# of frames)
 #define VERY_BIG  (1e10)
 //#define THRESH 0 //0.4 // base threshold for marker admission
-#define MAX_RUN 64//50000  //3  minimum 4; should not surpass fsize
+#define MAX_RUN 64// 3 //64//50000    minimum 4; should not surpass fsize
 #define ALPHA 1
+#define CLASSIC 0
 
 // compression params
 #define COMP_THRESH -140
@@ -63,7 +69,7 @@ extern "C" {
 
 		void* out_t;
 		void* out_h;
-		void* out_mfccs;
+		void* out_feats;
 		void* out_tempo;
 		void* out_dump;
 	} t_RVdtw;
@@ -74,7 +80,7 @@ extern "C" {
 	void RVdtw_free(t_RVdtw *x);
 
 	void RVdtw_assist(t_RVdtw *x, void *b, long m, long a, char *s);
-	void RVdtw_mfccs(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv);
+	void RVdtw_feats(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv);
 	void RVdtw_input(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv);
 	void RVdtw_scoresize(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv);
 	void RVdtw_read(t_RVdtw *x, t_symbol *s);
@@ -132,10 +138,10 @@ public:
 	vector<t_uint16> frame_index;
 	float SampleRate;
 	vector<vector<double> > frame, banks;
-	double *in, *logEnergy, *tmfcc;
+	double *in, *logEnergy, *tfeat;
 	vector<double> window;
 	int m;
-	t_atom *mfcc_frame;
+	t_atom *feat_frame;
 	fftw_complex *out;
     fftw_plan plan, dct;
 
@@ -154,7 +160,7 @@ public:
 	void perform(double *in, long sampleframes);
 
 	// inlet methods:
-	void mfccs(t_uint16 argc);
+	void feats(t_uint16 argc);
 	void score_size(long v);
 	void marker(t_symbol *s);
 	void reset();
@@ -163,12 +169,12 @@ public:
 	void gotoms(long v);
 	//void start();
 
-	// MFCC extraction methods:
+	// feat extraction methods:
 	void dspinit();
 	void fillBanks();
 	void hamming(int windowLength);
 	void add_sample_to_frames(double sample);
-	void reset_mfcc();
+	void reset_feat();
 	void calc_mfcc(t_uint16 frame_to_fft);
 
 	// DTW methods:

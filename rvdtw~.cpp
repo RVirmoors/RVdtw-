@@ -1,3 +1,7 @@
+// rvdtw~.cpp
+//
+// 2014-2016 Grigore Burloiu
+
 #include <rvdtw~.h>
 
 extern "C"
@@ -8,7 +12,7 @@ int C74_EXPORT main(void) {
 		0L, A_GIMME, 0);
 	class_dspinit(c);
 	
-	class_addmethod(c, (method)RVdtw_mfccs,		"mfccs",	A_GIMME, 0);
+	class_addmethod(c, (method)RVdtw_feats,		"feats",	A_GIMME, 0);
 	class_addmethod(c, (method)RVdtw_input,		"input",	A_GIMME, 0);
 	class_addmethod(c, (method)RVdtw_scoresize,	"score_size",	A_GIMME, 0); // not needed for users
 	class_addmethod(c, (method)RVdtw_read,		"read",		A_DEFSYM,0);
@@ -43,7 +47,7 @@ void *RVdtw_new(t_symbol *s, long argc, t_atom *argv) {
 		dsp_setup((t_pxobject *)x, 1);	// MSP inlets: arg is # of inlets
 		// outlets, RIGHT to LEFT:
 		x->out_tempo = floatout((t_object *) x);
-		x->out_mfccs = listout((t_object *) x);
+		x->out_feats = listout((t_object *) x);
 		x->out_dump = listout((t_object *) x);
 		x->out_h = intout((t_object *) x);
 		x->out_t = intout((t_object *) x);
@@ -63,7 +67,7 @@ void RVdtw_free(t_RVdtw *x) {
 void RVdtw_assist(t_RVdtw *x, void *b, long m, long a, char *s) {
     if (m == ASSIST_INLET)			// inlet
     { 
-                sprintf(s, "int: set length, mfccs: add frame");
+                sprintf(s, "int: set length, feats: add frame");
     } 
     else							// outlets
     {	
@@ -72,17 +76,17 @@ void RVdtw_assist(t_RVdtw *x, void *b, long m, long a, char *s) {
             case 0: sprintf(s, "t"); break;
             case 1: sprintf(s, "h"); break;
             case 2: sprintf(s, "dump"); break;                   
-			case 3: sprintf(s, "computed MFCC frames"); break;
+			case 3: sprintf(s, "computed feat frames"); break;
 			case 4: sprintf(s, "tempo multiplier"); break;
         }	
     }
 }
 
-void RVdtw_mfccs(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv) {
+void RVdtw_feats(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv) {
 	// TODO AICI CONVERT DIN ATOMS IN ARRAY
 	for (long i = 0; i < argc; i++)
-		x->rv->tmfcc[i] = atom_getfloat(argv+i);
-	x->rv->mfccs(argc);
+		x->rv->tfeat[i] = atom_getfloat(argv+i);
+	x->rv->feats(argc);
 }
 
 void RVdtw_input(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv) {
@@ -228,7 +232,7 @@ Raskell::Raskell() {
 		side_weight = 1; //1
 
 		maxRunCount = MAX_RUN; // tempo between 1/x and x
-		params = 40; // ysize; // # of MFCCs at input
+		params = 40; // ysize; // # of feats at input
 
 		SampleRate = sys_getsr();
 		active_frames = WINDOW_SIZE / HOP_SIZE;
@@ -241,22 +245,22 @@ Raskell::Raskell() {
 						
 		in = fftw_alloc_real(WINDOW_SIZE);
 		logEnergy = fftw_alloc_real(m);		// 48 filter banks
-		mfcc_frame = (t_atom*)sysmem_newptrclear(params * sizeof(t_atom_float));
+		feat_frame = (t_atom*)sysmem_newptrclear(params * sizeof(t_atom_float));
 		out = fftw_alloc_complex(WINDOW_SIZE/2 + 1);
-		tmfcc = fftw_alloc_real(m);
+		tfeat = fftw_alloc_real(m);
         plan = fftw_plan_dft_r2c_1d(WINDOW_SIZE, in, out, FFTW_MEASURE); // FFT real to complex FFTW_MEASURE 
-		dct = fftw_plan_r2r_1d(m, logEnergy, tmfcc, FFTW_REDFT10, NULL);
+		dct = fftw_plan_r2r_1d(m, logEnergy, tfeat, FFTW_REDFT10, NULL);
 
 		post ("RV object created");
 }
 
 
 Raskell::~Raskell() {
-		sysmem_freeptr(mfcc_frame);
+		sysmem_freeptr(feat_frame);
 		fftw_destroy_plan(plan);
         fftw_free(in); fftw_free(out);
 		fftw_free(logEnergy);
-		fftw_free(tmfcc);
+		fftw_free(tfeat);
 		fftw_cleanup();
 		
 		//file_close();
@@ -293,18 +297,18 @@ void Raskell::perform(double *in, long sampleframes) {
 			if(frame_index[i]==0) {		// if frame is full, then compute
 				for(j=0; j<WINDOW_SIZE; j++)
 					frame[i][j] *= window[j]; // apply hamming window
-				calc_mfcc(i); // get tmfcc[]
+				calc_mfcc(i); // get tfeat[]
 				// if signal is loud enough, then compress the first MFCC coefficient (loudness)
-				if (tmfcc[0] > COMP_THRESH) 
-					tmfcc[0] = compress(tmfcc[0], true);//tmfcc[0] /= 8;
-				else tmfcc[0] = compress(tmfcc[0], false);
-				mfccs(params);
+				if (tfeat[0] > COMP_THRESH) 
+					tfeat[0] = compress(tfeat[0], true);//tfeat[0] /= 8;
+				else tfeat[0] = compress(tfeat[0], false);
+				feats(params);
 			}
 		}
 	}
 }
 
-void Raskell::mfccs(t_uint16 argc) {
+void Raskell::feats(t_uint16 argc) {
 	if ((ysize > 0) && (input_sel > 0))  { // Y matrix was init'd, let's populate it
 		t_uint16 i, j;
 		double match=1, match_prev=1;
@@ -316,7 +320,7 @@ void Raskell::mfccs(t_uint16 argc) {
 
 		if ((input_sel == IN_SCORE) && (iter < ysize)) { // build Y matrix (offline)
 			for (j=0; j<argc; j++) {
-				y[iter][j] = tmfcc[j];
+				y[iter][j] = tfeat[j];
 			}
 			iter++; //iterate thru Y
 			if (iter == ysize)
@@ -327,7 +331,7 @@ void Raskell::mfccs(t_uint16 argc) {
 			iter++;
 
 			for (i=0; i<argc; i++) {
-				x[t%bsize][i] = tmfcc[i];
+				x[t%bsize][i] = tfeat[i];
 			}
 			
 
@@ -335,7 +339,7 @@ void Raskell::mfccs(t_uint16 argc) {
 				init_dtw();
 			else {
 				dtw_process(); // calculate next DTW step
-				dtw_back(); // calculate backwards DTW for tempo
+				if (!CLASSIC) dtw_back(); // calculate backwards DTW for tempo
 			}
 		}	// end input_sel==2 check
 	} // end input_sel>0 check
@@ -388,7 +392,7 @@ void Raskell::reset() {
 	
 	short i;
 
-	reset_mfcc();
+	reset_feat();
 
 	x.clear();
 	x.resize(bsize);
@@ -436,7 +440,7 @@ void Raskell::reset() {
 
 void Raskell::input(long v) {
 	// select input source: SCORE or LIVE 
-	reset_mfcc();
+	reset_feat();
 	input_sel = v;
 	if((input_sel == IN_LIVE)&& !ysize) {
 		object_error((t_object *)this, "initialize SCORE first!"); 
@@ -483,7 +487,7 @@ void Raskell::dspinit() {
 	fillBanks();
 	hamming(WINDOW_SIZE); // build window vector
 
-	reset_mfcc(); // sets frame_indexes, resizes frame vectors.
+	reset_feat(); // sets frame_indexes, resizes frame vectors.
 	post("DSP ready!");
 }
 
@@ -541,7 +545,7 @@ void Raskell::add_sample_to_frames(double sample) {
 	}
 }
 
-void Raskell::reset_mfcc() {
+void Raskell::reset_feat() {
 	frame.clear();
 	frame.resize(active_frames);
 	for (int i=0; i<active_frames; i++)
@@ -623,25 +627,32 @@ t_uint16 Raskell::get_inc() {
 	t_uint16 tmin2 = (t_mod+fsize-2) % fsize;
 	t_uint16 hmin2 = (h_mod+fsize-2) % fsize;
 	double min = VERY_BIG;
-
-	int difhist = history[(t + bsize - 1) % bsize] - history[(t + bsize - MAX_RUN) % bsize];
 	
-	if (runCount > maxRunCount || (difhist < (MAX_RUN / 8))) {
-		// tempo limit reached...
-		post("MAXRUNCOUNT h = %i, previous = %i", h, previous);
-		if (previous == NEW_ROW)
-			return NEW_COL;
-		else {
-			if (h > (bsize + MAX_RUN)) {
-				// NEW version
-				if (decrease_h())
-					return NEW_COL;
-			}
-//			else
-//				return NEW_ROW; // CLASSIC version
-		}				
+	if (!CLASSIC) {
+		int difhist = history[(t + bsize - 1) % bsize] - history[(t + bsize - MAX_RUN) % bsize];
+	
+		if (runCount > maxRunCount || (difhist < (MAX_RUN / 8))) {
+			// tempo limit reached...
+			post("MAXRUNCOUNT h = %i, previous = %i", h, previous);
+			if (previous == NEW_ROW)
+				return NEW_COL;
+			else {
+				if (h > (bsize + MAX_RUN)) {
+					// NEW version
+					if (decrease_h())
+						return NEW_COL;
+				}
+			}				
+		}
+	} else {
+		if (runCount > maxRunCount) {
+			if (previous == NEW_ROW)
+				return NEW_COL;
+			else
+				return NEW_ROW;
+		}
 	}
-	
+
 	for (i=0; i<fsize; i++) // if minimum is in row h..
 		if(dtw[i][hmin1] < min) {
 			min = dtw[i][hmin1];
@@ -890,8 +901,10 @@ bool Raskell::decrease_h() {
 	long i, j, ends;
 	long begin = h - MAX_RUN + 1;
 	static long min_begin = begin;
-	if (begin < min_begin) 
+	if (begin < min_begin) {		
+		post("begin = %i; min = %i", begin, min_begin);
 		return false;
+	}		
 	else
 		min_begin = begin;
 
@@ -969,7 +982,7 @@ void Raskell::file_open(char *name) {
 			if(input_sel != IN_LIVE) {
 				score_name = name;
 				// start reading SCORE frames				
-				// count # of mfcc's:
+				// count # of feat's:
 				long lines=0;
 				char *eol = strchr((char*)f_data[0], '\n');
 				while(eol != NULL) {
@@ -992,21 +1005,21 @@ void Raskell::file_open(char *name) {
 }
 
 bool Raskell::read_line() {	
-	double f_mfcc[50];
+	double f_feat[50];
 	t_uint16 i;
 	char buf[1024];
 	for(i=0; i<params; i++)
-		f_mfcc[i] = 0;
+		f_feat[i] = 0;
 	while ( sgets( buf, sizeof( buf )) ) { //&& i) {
 		int length = sscanf(buf, "%lf, %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf ",
-			&f_mfcc[0], &f_mfcc[1], &f_mfcc[2], &f_mfcc[3], &f_mfcc[4], 
-			&f_mfcc[5], &f_mfcc[6], &f_mfcc[7], &f_mfcc[8], &f_mfcc[9],  
-			&f_mfcc[10], &f_mfcc[11], &f_mfcc[12], &f_mfcc[13], &f_mfcc[14], 
-			&f_mfcc[15], &f_mfcc[16], &f_mfcc[17], &f_mfcc[18], &f_mfcc[19], 
-			&f_mfcc[20], &f_mfcc[21], &f_mfcc[22], &f_mfcc[23], &f_mfcc[24], 
-			&f_mfcc[25], &f_mfcc[26], &f_mfcc[27], &f_mfcc[28], &f_mfcc[29],
-			&f_mfcc[30], &f_mfcc[31], &f_mfcc[32], &f_mfcc[33], &f_mfcc[34], 
-			&f_mfcc[35], &f_mfcc[36], &f_mfcc[37], &f_mfcc[38], &f_mfcc[39], &f_mfcc[40]);
+			&f_feat[0], &f_feat[1], &f_feat[2], &f_feat[3], &f_feat[4], 
+			&f_feat[5], &f_feat[6], &f_feat[7], &f_feat[8], &f_feat[9],  
+			&f_feat[10], &f_feat[11], &f_feat[12], &f_feat[13], &f_feat[14], 
+			&f_feat[15], &f_feat[16], &f_feat[17], &f_feat[18], &f_feat[19], 
+			&f_feat[20], &f_feat[21], &f_feat[22], &f_feat[23], &f_feat[24], 
+			&f_feat[25], &f_feat[26], &f_feat[27], &f_feat[28], &f_feat[29],
+			&f_feat[30], &f_feat[31], &f_feat[32], &f_feat[33], &f_feat[34], 
+			&f_feat[35], &f_feat[36], &f_feat[37], &f_feat[38], &f_feat[39], &f_feat[40]);
 		if(length > (params+1) && input_sel != IN_LIVE) {
 			post("NOTE: number of params increased to %i", params);
 			params = length-1; // set number of parameters (increase if necessary)
@@ -1016,19 +1029,19 @@ bool Raskell::read_line() {
 			for (i=0; i<ysize; i++) {
 				y[i].resize(params);
 			}
-			mfcc_frame = (t_atom*)sysmem_resizeptr(mfcc_frame, params * sizeof(t_atom_float));
+			feat_frame = (t_atom*)sysmem_resizeptr(feat_frame, params * sizeof(t_atom_float));
 		}
 
 		for(t_uint16 i=0; i<params; i++) 
-			//atom_setfloat(mfcc_frame+i-1, f_mfcc[i]); // f_mfcc[0] = order no.
-			tmfcc[i] = f_mfcc[i+1];
-		// if signal is loud enough, then compress the first MFCC coefficient (loudness)
-		if (tmfcc[0] > COMP_THRESH) 
-			tmfcc[0] = compress(tmfcc[0], true);//tmfcc[0] /= 8;
-		else tmfcc[0] = compress(tmfcc[0], false);
+			//atom_setfloat(feat_frame+i-1, f_feat[i]); // f_feat[0] = order no.
+			tfeat[i] = f_feat[i+1];
+		// if signal is loud enough, then compress the first feat coefficient (loudness)
+		if (tfeat[0] > COMP_THRESH) 
+			tfeat[0] = compress(tfeat[0], true);//tfeat[0] /= 8;
+		else tfeat[0] = compress(tfeat[0], false);
 		//post("min is %.2f", min0);
-		//tmfcc[0]=0.1;
-		mfccs(params); 
+		//tfeat[0]=0.1;
+		feats(params); 
 		if(strstr(buf, "marker"))//-buf==0) // marker
 			marker(NULL);
 	}
