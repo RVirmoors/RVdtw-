@@ -228,7 +228,10 @@ Raskell::Raskell() {
 		input_sel = IN_SCORE; // 1 = SCORE; 2 = LIVE; 0 = closed		
 		follow = TRUE;
 
-		mid_weight = 0.5; //0.5; //1.9; //1.5
+		if (CLASSIC)
+			mid_weight = 1.5; //0.5; //1.9; //1.5
+		else
+			mid_weight = 0.5; 
 		side_weight = 1; //1
 
 		maxRunCount = MAX_RUN; // tempo between 1/x and x
