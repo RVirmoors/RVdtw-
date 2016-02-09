@@ -228,10 +228,9 @@ Raskell::Raskell() {
 		input_sel = IN_SCORE; // 1 = SCORE; 2 = LIVE; 0 = closed		
 		follow = TRUE;
 
-		if (CLASSIC)
-			mid_weight = 1.5; //0.5; //1.9; //1.5
-		else
-			mid_weight = 0.5; 
+
+		mid_weight = 0.5; //0.5; //1.9; //1.5
+
 		side_weight = 1; //1
 
 		maxRunCount = MAX_RUN; // tempo between 1/x and x
@@ -881,7 +880,7 @@ void Raskell::increment_t() {
 void Raskell::increment_h() {
 	h++;
 	h_mod = (h_mod+1)%fsize;
-	if (h == markers[m_iter][0]) {
+	if (h == markers[m_iter][M_SCORED]) {
 		markers[m_iter][M_LIVE] = t; // marker detected at time "t"
 		markers[m_iter][M_HOOK] = dtw_certainty;
 		markers[m_iter][M_CERT] = cur_dtw - prev_dtw;
