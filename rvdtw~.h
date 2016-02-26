@@ -114,7 +114,8 @@ public:
 
 	// internal vars:
 	long ysize;
-	t_uint16 params, t, t_mod, h, h_mod, h2, h_mod2, previous, iter;
+	t_uint16 params, t, t_mod, h, h_mod, previous, iter;
+	double h_real;
 	vector<vector<t_atom_float> > x, y; 
 	vector<t_uint16> history;
 	vector<vector<double> > b_path;

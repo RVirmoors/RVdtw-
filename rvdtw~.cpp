@@ -220,7 +220,7 @@ void RVdtw_perform64(t_RVdtw *x, t_object *dsp64, double **ins, long numins, dou
 
 Raskell::Raskell() {
 	
-		ysize = t = h = runCount = iter = m_iter = m_ideal_iter = t_mod = h_mod = 0; // current position for online DTW: (t,h)
+		ysize = t = h = h_real = runCount = iter = m_iter = m_ideal_iter = t_mod = h_mod = 0; // current position for online DTW: (t,h)
 		tempo = 1;
 		prev_dtw = cur_dtw = dtw_certainty = 0;
 		m_count = 0; // one marker is mandatory (to start)
@@ -388,7 +388,7 @@ void Raskell::marker(t_symbol * s) {
 }
 
 void Raskell::reset() {
-	t = t_mod = h = h_mod = runCount = iter = m_iter = m_ideal_iter = 0; // current position for online DTW: (t,h)
+	t = t_mod = h = h_real = h_mod = runCount = iter = m_iter = m_ideal_iter = 0; // current position for online DTW: (t,h)
 	tempo = 1;
 	previous = 0; // 0 = none; 1 = Row; 2 = Column; 3 = Both
 	
@@ -478,6 +478,7 @@ void Raskell::gotoms(long v) {
 	post("Starting from %i ms", v);
 	h = v * (double)(SampleRate / 1000.f / HOP_SIZE);
 	h_mod = h % fsize;
+	h_real = h;
 	//t = h;
 	//t_mod = h_mod;
 }
@@ -768,11 +769,11 @@ void Raskell::dtw_process() {
 }
 
 void Raskell::dtw_back() {
-	short debug = 0;
+	short debug = 1;
 	b_start = t % bsize;	
 	bh_start = h % bsize;
 	history[b_start] = h;
-	if (t >= bsize && h >= bsize && (t % 2) ) {
+	if (t >= bsize && h >= bsize && (t % 2)) {
 		double top, mid, bot, cheapest;
 		t_uint16 i, j;
 		Deque.clear();		
@@ -827,12 +828,15 @@ void Raskell::dtw_back() {
 		//dtw_certainty = b_dtw[b_path[p-1][0]][b_path[p-1][1]] * 10 / p;
 		// TODO: check how B-dtw destination relates to the main dtw one:
 		if(debug) {
-			if (i == b_start && j == bh_start) {
+			if (abs((b_start-i) - (bh_start-j)) < 2) {
 				post("path confirmed!");
-			} else if (i == b_start) {
-				post("T high");
-			} else post("H high");
+			} else {
+				if (i == b_start) {					
+					post("T high");
+				} else post("H high");
+			}
 		}
+		/*
 		// get tempo pivots from history via deque: http://www.infoarena.ro/deque-si-aplicatii
 		// first pivot is within L steps from path origin
 		// 2nd pivot is at least K steps away from 1st, AND minimizes SUM(b_dtw[pivots])
@@ -861,7 +865,7 @@ void Raskell::dtw_back() {
 				if (pivot1_h < pivot2_h) pivot1_h += bsize;
 				new_tempo = true;
 			}
-		}
+		} 
 		if (new_tempo) {
 			// compute and output tempo
 			tempo = (float)(pivot1_h - pivot2_h) / (float)(pivot1_t - pivot2_t);
@@ -869,6 +873,7 @@ void Raskell::dtw_back() {
 		}
 		Min += b_dtw[(b_start+bsize-1) % bsize][(bh_start+bsize-1) % bsize];
 		// slowly grow Min so that it can be reached again
+		*/
 	}
 }
 
@@ -880,6 +885,18 @@ void Raskell::increment_t() {
 void Raskell::increment_h() {
 	h++;
 	h_mod = (h_mod+1)%fsize;
+
+	h_real += tempo;
+
+	if ((h % 10 == 0) && h > bsize) {
+		// tempo model in Papiotis10, updated about every 1s
+		tempo = (float)(history[(t + bsize - 1) % bsize] - history[(t + bsize - 11) % bsize]) / 10;
+		float boost = (float)(h - h_real) / ((float)100);
+		tempo += boost;
+		outlet_float(max->out_tempo, tempo);
+	}
+
+
 	if (h == markers[m_iter][M_SCORED]) {
 		markers[m_iter][M_LIVE] = t; // marker detected at time "t"
 		markers[m_iter][M_HOOK] = dtw_certainty;
