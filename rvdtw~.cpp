@@ -331,11 +331,11 @@ void Raskell::feats(t_uint16 argc) {
 	
 		if (input_sel == IN_LIVE) { // new X feature entered
 			iter++;
-
+			
+			// build X matrix (online)
 			for (i=0; i<argc; i++) {
 				x[t%bsize][i] = tfeat[i];
-			}
-			
+			}		
 
 			if (t == 0)//xsize-1)  // is the window full?
 				init_dtw();
@@ -634,7 +634,7 @@ t_uint16 Raskell::get_inc() {
 	if (!CLASSIC) {
 		int difhist = history[(t + bsize - 1) % bsize] - history[(t + bsize - MAX_RUN) % bsize];
 	
-		if (runCount > maxRunCount || (difhist < (MAX_RUN / 8))) {
+		if (runCount > maxRunCount || ((difhist < (MAX_RUN / 8)) && t > MAX_RUN)) {
 			// tempo limit reached...
 			post("MAXRUNCOUNT h = %i, previous = %i", h, previous);
 			if (previous == NEW_ROW)
@@ -730,7 +730,6 @@ void Raskell::dtw_process() {
 	if (h < ysize) { // unless we've reached the end of Y...
 					
 		if (inc != NEW_ROW) { // make new Column
-			// build X matrix (online)
 			outlet_int(max->out_t, t);
 			if (h<bsize)	jstart = 0;
 			else			jstart = h-bsize;
@@ -769,7 +768,7 @@ void Raskell::dtw_process() {
 }
 
 void Raskell::dtw_back() {
-	short debug = 1;
+	short debug = 0;
 	b_start = t % bsize;	
 	bh_start = h % bsize;
 	history[b_start] = h;
@@ -827,15 +826,16 @@ void Raskell::dtw_back() {
 		}
 		//dtw_certainty = b_dtw[b_path[p-1][0]][b_path[p-1][1]] * 10 / p;
 		// TODO: check how B-dtw destination relates to the main dtw one:
-		if(debug) {
-			if (abs((b_start-i) - (bh_start-j)) < 2) {
-				post("path confirmed!");
-			} else {
-				if (i == b_start) {					
-					post("T high");
-				} else post("H high");
-			}
+
+		if (abs((b_start-i) - (bh_start-j)) < 2) {
+			if(debug) post("path confirmed!");
+		} else {
+			if (i == b_start) {					
+				if(debug) post("T high");
+			} else 
+				if(debug) post("H high");
 		}
+		
 		/*
 		// get tempo pivots from history via deque: http://www.infoarena.ro/deque-si-aplicatii
 		// first pivot is within L steps from path origin
@@ -877,7 +877,31 @@ void Raskell::dtw_back() {
 	}
 }
 
+void Raskell::calc_tempo(int mode) {
+	int second = SampleRate / HOP_SIZE;
+	switch(mode) {
+		case T_DTW:
+			break;
+		case T_P:
+			if ((t % second == 0) && t) {
+				// tempo model in Papiotis10, updated about every 1s
+				tempo = (float)(history[(t + bsize) % bsize] - history[(t + bsize - second) % bsize]) / second;
+				float boost = (float)(h - h_real) / ((float)second*10);
+				tempo += boost;
+				outlet_float(max->out_tempo, tempo);
+			}
+			break;
+		case T_PID:
+			break;
+		case T_PIVOTS:
+			break;
+	}
+}
+
 void Raskell::increment_t() {
+	calc_tempo(T_P);
+	h_real += tempo;
+
 	t++;
 	t_mod = (t_mod+1)%fsize;
 }
@@ -885,17 +909,6 @@ void Raskell::increment_t() {
 void Raskell::increment_h() {
 	h++;
 	h_mod = (h_mod+1)%fsize;
-
-	h_real += tempo;
-
-	if ((h % 10 == 0) && h > bsize) {
-		// tempo model in Papiotis10, updated about every 1s
-		tempo = (float)(history[(t + bsize - 1) % bsize] - history[(t + bsize - 11) % bsize]) / 10;
-		float boost = (float)(h - h_real) / ((float)100);
-		tempo += boost;
-		outlet_float(max->out_tempo, tempo);
-	}
-
 
 	if (h == markers[m_iter][M_SCORED]) {
 		markers[m_iter][M_LIVE] = t; // marker detected at time "t"

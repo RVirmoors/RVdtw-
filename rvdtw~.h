@@ -12,7 +12,7 @@
 #include "ext_obex.h"		// required for "new" style objects
 #include "z_dsp.h"			// required for MSP objects
 #include "ext_buffer.h"		// MSP buffer
-
+#include "defines.h"		// int defines
 
 #include <fftw3.h>
 #include <algorithm>
@@ -42,20 +42,6 @@
 #define COMP_RELEASE 2
 #define COMP_RATIO 8
 
-// int defines
-// previous dtw step:
-#define NEW_ROW 1
-#define NEW_COL 2
-#define NEW_BOTH 3
-
-#define IN_SCORE 1
-#define IN_LIVE 2
-
-#define M_SCORED 0
-#define M_HOOK 1
-#define M_CERT 2
-#define M_IDEAL 3
-#define M_LIVE 4
 
 using namespace std;
 
@@ -185,6 +171,7 @@ public:
 	void calc_dtw(t_uint16 i, t_uint16 j);
 	void dtw_process();
 	double compress(double value, bool active);
+	void calc_tempo(int mode);
 	void increment_t();
 	void increment_h();
 	bool decrease_h();
