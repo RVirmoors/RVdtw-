@@ -340,7 +340,8 @@ void Raskell::feats(t_uint16 argc) {
 			if (t == 0)//xsize-1)  // is the window full?
 				init_dtw();
 			else {
-				dtw_process(); // calculate next DTW step
+				dtw_process(); // calculate next DTW step	
+				history[t] = h;
 				if (!CLASSIC) dtw_back(); // calculate backwards DTW for tempo
 			}
 		}	// end input_sel==2 check
@@ -360,6 +361,7 @@ void Raskell::score_size(long v) {
 		post("Score Matrix memory alloc'd, size %i * %i", ysize, params);	
 
 		reset(); // x, dtw arrays
+		history.resize(ysize);
 
 		markers.clear();
 		markers.resize(ysize);
@@ -403,7 +405,6 @@ void Raskell::reset() {
 	}
 
 	history.clear();
-	history.resize(bsize);
 	pivot1_t = pivot1_h = pivot2_t = pivot2_h = 0;
 
 	b_path.clear();
@@ -454,6 +455,7 @@ void Raskell::input(long v) {
 		case 0 : post("input selection is: OFF"); break;
 		case IN_SCORE : post("input selection is: SCORE"); break;
 		case IN_LIVE : post("input selection is: LIVE"); break;
+		case OUT_IO : post("inputs OFF, ready to write history!"); break;
 	}
 	
 	if (input_sel == IN_LIVE) {
@@ -631,10 +633,10 @@ t_uint16 Raskell::get_inc() {
 	t_uint16 hmin2 = (h_mod+fsize-2) % fsize;
 	double min = VERY_BIG;
 	
-	if (!CLASSIC) {
-		int difhist = history[(t + bsize - 1) % bsize] - history[(t + bsize - MAX_RUN) % bsize];
+	if (!CLASSIC && (t > MAX_RUN)) {
+		int difhist = history[t - 1] - history[t - MAX_RUN];
 	
-		if (runCount > maxRunCount || ((difhist < (MAX_RUN / 8)) && t > MAX_RUN)) {
+		if (runCount > maxRunCount || (difhist < (MAX_RUN / 8))) {
 			// tempo limit reached...
 			post("MAXRUNCOUNT h = %i, previous = %i", h, previous);
 			if (previous == NEW_ROW)
@@ -647,7 +649,7 @@ t_uint16 Raskell::get_inc() {
 				}
 			}				
 		}
-	} else {
+	} else { // classic o-DTW mode
 		if (runCount > maxRunCount) {
 			if (previous == NEW_ROW)
 				return NEW_COL;
@@ -767,11 +769,12 @@ void Raskell::dtw_process() {
 	}
 }
 
+
+
 void Raskell::dtw_back() {
 	short debug = 0;
 	b_start = t % bsize;	
 	bh_start = h % bsize;
-	history[b_start] = h;
 	if (t >= bsize && h >= bsize && (t % 2)) {
 		double top, mid, bot, cheapest;
 		t_uint16 i, j;
@@ -878,20 +881,31 @@ void Raskell::dtw_back() {
 }
 
 void Raskell::calc_tempo(int mode) {
-	int second = SampleRate / HOP_SIZE;
+	int second = SampleRate / HOP_SIZE; // number of frames per second
+	float error = h - h_real;	// for P and PID models
+	static float integral = 0;	// for PID model
+
 	switch(mode) {
 		case T_DTW:
+			tempo = history[t] - history[t-1];
 			break;
 		case T_P:
-			if ((t % second == 0) && t) {
+			if (t % second == 0) {
 				// tempo model in Papiotis10, updated about every 1s
-				tempo = (float)(history[(t + bsize) % bsize] - history[(t + bsize - second) % bsize]) / second;
-				float boost = (float)(h - h_real) / ((float)second*10);
+				tempo = (float)(history[t] - history[t - second]) / second;
+				float boost = error / ((float)second*10);
 				tempo += boost;
-				outlet_float(max->out_tempo, tempo);
 			}
 			break;
 		case T_PID:
+			if (abs(error) < 3.f) //anti-windup
+				integral += error;
+			if (t % second == 0) {
+				// PI tempo model, updated about every 1s
+				tempo = (float)(history[t] - history[t - second]) / second;
+				float boost = (Kp*error + Ki*integral) / ((float)second);
+				tempo += boost;
+			}
 			break;
 		case T_PIVOTS:
 			break;
@@ -899,7 +913,9 @@ void Raskell::calc_tempo(int mode) {
 }
 
 void Raskell::increment_t() {
-	calc_tempo(T_P);
+	if (t > 2) // TODO : set this
+		calc_tempo(T_PID);	
+	outlet_float(max->out_tempo, tempo);
 	h_real += tempo;
 
 	t++;
@@ -1148,7 +1164,13 @@ void Raskell::do_write(t_symbol *s) {
 	// prepare buffer
 	long long i, j;
 	string buf = "";
-	if (input_sel == IN_SCORE) { // in SCORE mode, save the score
+	if (input_sel == OUT_IO) { // in IO mode, report history
+		filetype = 'CSV';
+		strcpy(filename, "io");
+		for (i = 0; i < h; i++) {
+			buf += to_string((long long)history[i]) + "\n";
+		}
+	} else if (input_sel == IN_SCORE) { // in SCORE mode, save the score
 		strcpy(filename, "score.txt");
 		for (i = 0; i < ysize; i++) {
 			buf += to_string(i) + ",";
