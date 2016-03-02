@@ -28,4 +28,5 @@
 #define T_PID 2
 #define Kp 0.1467
 #define Ki 0.005051
-#define T_PIVOTS 3
+#define T_DEQ 3
+#define T_DEQ_ARZT 4

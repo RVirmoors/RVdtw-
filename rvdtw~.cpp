@@ -222,7 +222,6 @@ Raskell::Raskell() {
 	
 		ysize = t = h = h_real = runCount = iter = m_iter = m_ideal_iter = t_mod = h_mod = 0; // current position for online DTW: (t,h)
 		tempo = 1;
-		prev_dtw = cur_dtw = dtw_certainty = 0;
 		m_count = 0; // one marker is mandatory (to start)
 		previous = 0; // 0 = none; 1 = Row; 2 = Column; 3 = Both
 		input_sel = IN_SCORE; // 1 = SCORE; 2 = LIVE; 0 = closed		
@@ -411,6 +410,12 @@ void Raskell::reset() {
 	b_path.resize(bsize*2);
 	for (i=0; i<bsize*2; i++) {
 		b_path[i].resize(2); // t & h
+	}
+
+	b_err.clear();
+	b_err.resize(bsize);
+	for (i=0; i<bsize; i++) {
+		b_err[i].resize(4); // error, t, h, local tempo
 	}
 
 	Dist.clear();
@@ -678,7 +683,6 @@ t_uint16 Raskell::get_inc() {
 
 void Raskell::calc_dtw(t_uint16 i, t_uint16 j) {
 	// calculate DTW matrix
-	prev_dtw = cur_dtw;
 	double top, mid, bot, cheapest;
 	t_uint16 imin1 = (i+fsize-1) % fsize;
 	t_uint16 imin2 = (i+fsize-2) % fsize;
@@ -700,19 +704,21 @@ void Raskell::calc_dtw(t_uint16 i, t_uint16 j) {
 	else { 
 		cheapest = bot;
 		}
-	dtw[imod][jmod] = cur_dtw = cheapest;	
+	dtw[imod][jmod] = cheapest;	
 	//post("dtw[%i][%i] = %f", i, j, cheapest);
 }
 
 void Raskell::dtw_process() {
 	short debug = 0;
+	static t_uint16 prev_h = 0;
 	t_uint16 inc = get_inc();
 	t_uint16 j, jstart;
 	if(debug) post("next 1:row/2:column/3:both : %i", inc);
 
 	// it's possible to have several Y/h hikes for each X/t feature:
 	while((inc == NEW_ROW) && (h < ysize) && (h != markers[0][0] + fsize-1)) {
-		outlet_int(max->out_h, h);
+		if (h >= prev_h)
+			outlet_int(max->out_h, h);
 
 		if (t<bsize)	jstart = 0;
 		else			jstart = t-bsize;
@@ -737,20 +743,18 @@ void Raskell::dtw_process() {
 			else			jstart = h-bsize;
 
 			for(j=jstart; j<h; j++) {
-				//if (j>=0) {
 				distance(t, j); // calculate distance for new column
 				calc_dtw(t, j); // calc DTW for new column 
-				//}
 			}
 			increment_t();
 		}
 		if (inc != NEW_COL) { // make new Row
-			outlet_int(max->out_h, h);
+			if (h >= prev_h)
+				outlet_int(max->out_h, h);
 			if (t<bsize)	jstart = 0;
 			else			jstart = t-bsize;
 			for (j=jstart; j<t; j++) {
 				distance(j, h); // calculate distance for new row
-				//if ((j>0)&&(h>0)) 
 				calc_dtw(j, h); // calc DTW for new row
 			}
 			increment_h();
@@ -761,6 +765,7 @@ void Raskell::dtw_process() {
 			runCount = 1;
 		if (inc != NEW_BOTH)
 			previous = inc;
+		prev_h = h;
 	}
 	else { // h = ysize
 		post("End reached!");
@@ -775,7 +780,16 @@ void Raskell::dtw_back() {
 	short debug = 0;
 	b_start = t % bsize;	
 	bh_start = h % bsize;
-	if (t >= bsize && h >= bsize && (t % 2)) {
+
+	b_err[b_start][0] = 0.f; // to be computed after t > bsize, below
+	b_err[b_start][1] = t;
+	b_err[b_start][2] = h;
+	b_err[b_start][3] = 1.f; // local tempo:
+	if (t > 8)
+		b_err[(b_start-4+bsize)%bsize][3] = 
+			(float)(h - b_err[(b_start-8+bsize)%bsize][2]) / (t - b_err[(b_start-8+bsize)%bsize][1]);
+
+	if (t >= bsize && h >= bsize) { //&& (t % 2)
 		double top, mid, bot, cheapest;
 		t_uint16 i, j;
 		Deque.clear();		
@@ -784,8 +798,8 @@ void Raskell::dtw_back() {
 		b_move[b_start][bh_start] = NEW_BOTH;
 
 		// compute backwards DTW (circular i--), and b_move
-		for (i = b_start+bsize-1 % bsize; i != b_start; i = (i+bsize-1) % bsize) { 
-			for (j = bh_start+bsize-1 % bsize; j != bh_start; j = (j+bsize-1) % bsize) { 
+		for (i = b_start+bsize-1 % bsize; i != b_start; i = (i+bsize-1) % bsize) { // t-1 ... t-bsize
+			for (j = bh_start+bsize-1 % bsize; j != bh_start; j = (j+bsize-1) % bsize) { // h-1 ... h-bsize
 				t_uint16 imod = i % bsize;
 				t_uint16 imin1 = (i+1) % bsize;		
 				t_uint16 imin2 = (i+2) % bsize;
@@ -809,81 +823,49 @@ void Raskell::dtw_back() {
 				b_dtw[imod][jmod] = cheapest;
 			}
 		}
-		i = (b_start+bsize-1) % bsize; 
-		j = (bh_start+bsize-1) % bsize;
+		t_uint16 b_t = t, b_h = h;
+		i = (b_start+bsize-1) % bsize;		// t-1
+		j = (bh_start+bsize-1) % bsize;		// h-1
 		b_path[0][0] = i; b_path[0][1] = j;
 		int p = 1;
 		while (i != b_start && j != bh_start) {
 			if (b_move[i][j] == NEW_ROW) {
-				j = (j+bsize-1) % bsize;
+				j = (j+bsize-1) % bsize;	 // j--
+				b_h--;
 			}
 			else if (b_move[i][j] == NEW_COL) {
-				i = (i+bsize-1) % bsize;
+				i = (i+bsize-1) % bsize;	// i--
+				b_t--;
 			}
 			else if (b_move[i][j] == NEW_BOTH) {
-				i = (i+bsize-1) % bsize; 
-				j = (j+bsize-1) % bsize;
+				i = (i+bsize-1) % bsize;	// i--
+				j = (j+bsize-1) % bsize;	// j--
+				b_t--; b_h--;
 			}
 			b_path[p][0] = i; b_path[p][1] = j;
 			p++;
 		}
-		//dtw_certainty = b_dtw[b_path[p-1][0]][b_path[p-1][1]] * 10 / p;
-		// TODO: check how B-dtw destination relates to the main dtw one:
-
-		if (abs((b_start-i) - (bh_start-j)) < 2) {
-			if(debug) post("path confirmed!");
-		} else {
-			if (i == b_start) {					
-				if(debug) post("T high");
-			} else 
-				if(debug) post("H high");
-		}
 		
-		/*
-		// get tempo pivots from history via deque: http://www.infoarena.ro/deque-si-aplicatii
-		// first pivot is within L steps from path origin
-		// 2nd pivot is at least K steps away from 1st, AND minimizes SUM(b_dtw[pivots])
-		static double Min = VERY_BIG, Sum;
-		bool new_tempo = false;
-		int K = 10, L = 3;
-		for (i = 0; i < (p - K); i++) {
-			if (i < L) {
-				bool popped = false;
-				while (!Deque.empty() && b_dtw[b_path[i][0]][b_path[i][1]] <= b_dtw[b_path[Deque.front()][0]][b_path[Deque.front()][1]] ) {
-					Deque.pop_front();   
-					popped = true;
-				}
-				if (popped || Deque.empty()) Deque.push_front(i);
-			}
-			Sum = b_dtw[b_path[Deque.front()][0]][b_path[Deque.front()][1]] + 
-				b_dtw[b_path[i+K][0]][b_path[i+K][1]];
-			if (Sum < Min) {
-				tempo_prob = Min = Sum;
-				pivot1_t = b_path[Deque.front()][0];
-				pivot1_h = b_path[Deque.front()][1];
-				pivot2_t = b_path[i+K][0];
-				pivot2_h = b_path[i+K][1];
-				// recover wrap around bsize:
-				if (pivot1_t < pivot2_t) pivot1_t += bsize;
-				if (pivot1_h < pivot2_h) pivot1_h += bsize;
-				new_tempo = true;
-			}
-		} 
-		if (new_tempo) {
-			// compute and output tempo
-			tempo = (float)(pivot1_h - pivot2_h) / (float)(pivot1_t - pivot2_t);
-			outlet_float(max->out_tempo, tempo);
-		}
-		Min += b_dtw[(b_start+bsize-1) % bsize][(bh_start+bsize-1) % bsize];
-		// slowly grow Min so that it can be reached again
-		*/
+		b_err[b_start][0] = abs(history[b_t] - b_h);
+
+		// output certainty
+		atom_setsym(dump, gensym("b_err"));
+		atom_setlong(dump+1, b_err[b_start][0]);
+		outlet_list(max->out_dump, 0L, 2, dump);
 	}
 }
 
 void Raskell::calc_tempo(int mode) {
 	int second = SampleRate / HOP_SIZE; // number of frames per second
-	float error = h - h_real;	// for P and PID models
+	float error = h - h_real;	// for P, PID, DEQ models
 	static float integral = 0;	// for PID model
+	// for DEQ model
+	static double Min = VERY_BIG, Sum;
+	bool new_tempo = false;
+	int K = second, L = second / 2;
+	int t_passed = 0;
+	// for DEQ_ARZT model
+	vector<double> tempos;
 
 	switch(mode) {
 		case T_DTW:
@@ -907,16 +889,88 @@ void Raskell::calc_tempo(int mode) {
 				tempo += boost;
 			}
 			break;
-		case T_PIVOTS:
+		case T_DEQ:
+			// get tempo pivots from history via deque: http://www.infoarena.ro/deque-si-aplicatii
+			// first pivot is within L steps from path origin
+			// 2nd pivot is at least K steps away from 1st, AND minimizes SUM(b_err[pivots])
+			if (t < bsize || h < bsize)
+				tempo = history[t] - history[t-1]; // not yet active
+			else {				
+				for (int i = (b_start-1+bsize)%bsize; i != b_start; i = (i-1+bsize)%bsize) { // for i++
+					if (i > (b_start-L+bsize)%bsize) { // if i < L
+						bool popped = false;
+						while (!Deque.empty() && b_err[i][0] <= b_err[Deque.front()][0]) {
+							Deque.pop_front();   
+							popped = true;
+						}
+						if (popped || Deque.empty()) Deque.push_front(i);
+					}
+					if (!Deque.empty()) {
+						t_uint16 iplusK = (i-K+bsize)%bsize;
+						Sum = b_err[Deque.front()][0] + b_err[iplusK][0];
+						if (Sum < Min) {
+							tempo_prob = Min = Sum;
+							pivot1_t = b_err[Deque.front()][1];
+							pivot1_h = b_err[Deque.front()][2];
+							pivot2_t = b_err[iplusK][1];
+							pivot2_h = b_err[iplusK][2];
+							new_tempo = true;
+						}
+					}
+				} 
+				if (new_tempo && pivot1_t != pivot2_t) {
+					// compute new tempo, avoiding divide by 0
+					tempo = (float)(pivot1_h - pivot2_h) / (float)(pivot1_t - pivot2_t);
+					// add PID ajustment:
+					if (abs(error) < 3.f) //anti-windup
+						integral += error;
+					float boost = (Kp*error + Ki*integral) / ((float)t - t_passed + 1);
+					tempo += boost;
+					t_passed = t;
+				}			
+				// slowly grow Min so that it can be reached again
+				Min += abs(error);
+			}
+			break;
+		case T_DEQ_ARZT:
+			if (t < bsize || h < bsize)
+				tempo = history[t] - history[t-1]; // not yet active
+			else {	
+				for (int i = (b_start-4+bsize)%bsize; i != b_start; i = (i-1+bsize)%bsize) { // for i++
+					if(b_err[i][0] <= Min && tempos.size() <= 20) {
+						new_tempo = true;
+						Min = b_err[i][0];
+						tempos.push_back(b_err[i][3]);
+					}					
+				}
+				if (new_tempo && tempos.size() > 2) {
+					for (int i = 0; i < tempos.size(); i++)
+						tempo += tempos[i] * (tempos.size() - i);	// sum of tempos[i]*(n-i)
+					tempo /= tempos.size() * (tempos.size()+1) / 2; // sum of 1..n
+					// add PID ajustment:
+					if (abs(error) < 3.f) //anti-windup
+						integral += error;
+					float boost = (Kp*error + Ki*integral) / ((float)t - t_passed + 1);
+					tempo += boost;
+					t_passed = t;
+				}
+				// slowly grow Min so that it can be reached again
+				Min += abs(error);
+			}
 			break;
 	}
 }
 
 void Raskell::increment_t() {
-	if (t > 2) // TODO : set this
-		calc_tempo(T_PID);	
+	if (t > 8) // TODO : set this
+		calc_tempo(T_DEQ_ARZT);	
 	outlet_float(max->out_tempo, tempo);
-	h_real += tempo;
+	if (tempo)
+		h_real += tempo;
+	// output real H
+	atom_setsym(dump, gensym("h_real"));
+	atom_setlong(dump+1, h_real);
+	outlet_list(max->out_dump, 0L, 2, dump);
 
 	t++;
 	t_mod = (t_mod+1)%fsize;
@@ -928,8 +982,8 @@ void Raskell::increment_h() {
 
 	if (h == markers[m_iter][M_SCORED]) {
 		markers[m_iter][M_LIVE] = t; // marker detected at time "t"
-		markers[m_iter][M_HOOK] = dtw_certainty;
-		markers[m_iter][M_CERT] = cur_dtw - prev_dtw;
+		//markers[m_iter][M_HOOK] = dtw_certainty;
+		//markers[m_iter][M_CERT] = cur_dtw - prev_dtw;
 		post("marker detected at t = %i, h = %i", t, h);
 		atom_setsym(dump, gensym("marker"));
 		atom_setlong(dump+1, m_iter);

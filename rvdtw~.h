@@ -104,7 +104,7 @@ public:
 	double h_real;
 	vector<vector<t_atom_float> > x, y; 
 	vector<t_uint16> history;
-	vector<vector<double> > b_path;
+	vector<vector<double> > b_path, b_err;
 	vector<vector<double> > Dist, dtw, b_dtw, b_move;
 	deque<double> Deque;
 	t_uint16 b_start, bh_start;
@@ -115,7 +115,6 @@ public:
 	float tempo;
 	t_uint16 pivot1_t, pivot1_h, pivot2_t, pivot2_h;
 	double tempo_prob;
-	double dtw_certainty, cur_dtw, prev_dtw;
 
 	t_uint16 runCount, maxRunCount, m_iter, m_ideal_iter, m_count, input_sel;
 	t_atom dump[50];
