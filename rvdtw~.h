@@ -115,6 +115,7 @@ public:
 	float tempo;
 	t_uint16 pivot1_t, pivot1_h, pivot2_t, pivot2_h;
 	double tempo_prob;
+	float integral; // for PID model
 
 	t_uint16 runCount, maxRunCount, m_iter, m_ideal_iter, m_count, input_sel;
 	t_atom dump[50];

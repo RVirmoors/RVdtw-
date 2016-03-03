@@ -226,7 +226,7 @@ Raskell::Raskell() {
 		previous = 0; // 0 = none; 1 = Row; 2 = Column; 3 = Both
 		input_sel = IN_SCORE; // 1 = SCORE; 2 = LIVE; 0 = closed		
 		follow = TRUE;
-
+		integral = 0;	
 
 		mid_weight = 0.5; //0.5; //1.9; //1.5
 
@@ -392,6 +392,7 @@ void Raskell::reset() {
 	t = t_mod = h = h_real = h_mod = runCount = iter = m_iter = m_ideal_iter = 0; // current position for online DTW: (t,h)
 	tempo = 1;
 	previous = 0; // 0 = none; 1 = Row; 2 = Column; 3 = Both
+	integral = 0;	
 	
 	short i;
 
@@ -415,7 +416,7 @@ void Raskell::reset() {
 	b_err.clear();
 	b_err.resize(bsize);
 	for (i=0; i<bsize; i++) {
-		b_err[i].resize(4); // error, t, h, local tempo
+		b_err[i].resize(5); // error, t, h, local tempo, used flag
 	}
 
 	Dist.clear();
@@ -641,7 +642,7 @@ t_uint16 Raskell::get_inc() {
 	if (!CLASSIC && (t > MAX_RUN)) {
 		int difhist = history[t - 1] - history[t - MAX_RUN];
 	
-		if (runCount > maxRunCount || (difhist < (MAX_RUN / 8))) {
+		if (runCount > maxRunCount || (difhist < (MAX_RUN / 16))) {
 			// tempo limit reached...
 			post("MAXRUNCOUNT h = %i, previous = %i", h, previous);
 			if (previous == NEW_ROW)
@@ -662,7 +663,7 @@ t_uint16 Raskell::get_inc() {
 				return NEW_ROW;
 		}
 	}
-
+	
 	for (i=0; i<fsize; i++) // if minimum is in row h..
 		if(dtw[i][hmin1] < min) {
 			min = dtw[i][hmin1];
@@ -785,6 +786,7 @@ void Raskell::dtw_back() {
 	b_err[b_start][1] = t;
 	b_err[b_start][2] = h;
 	b_err[b_start][3] = 1.f; // local tempo:
+	b_err[b_start][4] = 0; // not yet used
 	if (t > 8)
 		b_err[(b_start-4+bsize)%bsize][3] = 
 			(float)(h - b_err[(b_start-8+bsize)%bsize][2]) / (t - b_err[(b_start-8+bsize)%bsize][1]);
@@ -857,15 +859,24 @@ void Raskell::dtw_back() {
 
 void Raskell::calc_tempo(int mode) {
 	int second = SampleRate / HOP_SIZE; // number of frames per second
-	float error = h - h_real;	// for P, PID, DEQ models
-	static float integral = 0;	// for PID model
+	float error = (h - h_real) / (b_err[b_start][0] + 1);	// for all models
 	// for DEQ model
 	static double Min = VERY_BIG, Sum;
 	bool new_tempo = false;
-	int K = second, L = second / 2;
-	int t_passed = 0;
+	int K = second * 2, L = second;
+	static int t_passed = 0;
 	// for DEQ_ARZT model
 	vector<double> tempos;
+	/*
+	if (error < MAX_RUN / -8) {
+		tempo = 0.00001;
+		return;
+	}
+	if (error > MAX_RUN / 8) {
+		tempo = 100000;
+		return;
+	}*/
+		
 
 	switch(mode) {
 		case T_DTW:
@@ -894,7 +905,7 @@ void Raskell::calc_tempo(int mode) {
 			// first pivot is within L steps from path origin
 			// 2nd pivot is at least K steps away from 1st, AND minimizes SUM(b_err[pivots])
 			if (t < bsize || h < bsize)
-				tempo = history[t] - history[t-1]; // not yet active
+				tempo = 1;// history[t] - history[t-1]; // not yet active
 			else {				
 				for (int i = (b_start-1+bsize)%bsize; i != b_start; i = (i-1+bsize)%bsize) { // for i++
 					if (i > (b_start-L+bsize)%bsize) { // if i < L
@@ -908,12 +919,14 @@ void Raskell::calc_tempo(int mode) {
 					if (!Deque.empty()) {
 						t_uint16 iplusK = (i-K+bsize)%bsize;
 						Sum = b_err[Deque.front()][0] + b_err[iplusK][0];
-						if (Sum < Min) {
+						if (Sum < Min && !b_err[iplusK][4]) {
+							// if found new min, and it hasn't been used already
 							tempo_prob = Min = Sum;
 							pivot1_t = b_err[Deque.front()][1];
 							pivot1_h = b_err[Deque.front()][2];
 							pivot2_t = b_err[iplusK][1];
 							pivot2_h = b_err[iplusK][2];
+							b_err[iplusK][4] = 1; //set used flag
 							new_tempo = true;
 						}
 					}
@@ -926,24 +939,29 @@ void Raskell::calc_tempo(int mode) {
 						integral += error;
 					float boost = (Kp*error + Ki*integral) / ((float)t - t_passed + 1);
 					tempo += boost;
+					post("boost = %f", boost);
 					t_passed = t;
 				}			
 				// slowly grow Min so that it can be reached again
 				Min += abs(error);
+				//post("Min = %f", Min);
 			}
 			break;
-		case T_DEQ_ARZT:
+		case T_ARZT:
 			if (t < bsize || h < bsize)
 				tempo = history[t] - history[t-1]; // not yet active
-			else {	
+			else {
 				for (int i = (b_start-4+bsize)%bsize; i != b_start; i = (i-1+bsize)%bsize) { // for i++
-					if(b_err[i][0] <= Min && tempos.size() <= 20) {
+					if(b_err[i][0] < Min && tempos.size() <= 20) {
 						new_tempo = true;
 						Min = b_err[i][0];
 						tempos.push_back(b_err[i][3]);
+						if (i - b_start > 40) // spread them out
+							i = (i-40+bsize)%bsize;
 					}					
 				}
 				if (new_tempo && tempos.size() > 2) {
+					tempo = 0;
 					for (int i = 0; i < tempos.size(); i++)
 						tempo += tempos[i] * (tempos.size() - i);	// sum of tempos[i]*(n-i)
 					tempo /= tempos.size() * (tempos.size()+1) / 2; // sum of 1..n
@@ -963,15 +981,18 @@ void Raskell::calc_tempo(int mode) {
 
 void Raskell::increment_t() {
 	if (t > 8) // TODO : set this
-		calc_tempo(T_DEQ_ARZT);	
-	outlet_float(max->out_tempo, tempo);
+		calc_tempo(T_PID);	
 	if (tempo)
+		outlet_float(max->out_tempo, tempo);
 		h_real += tempo;
 	// output real H
-	atom_setsym(dump, gensym("h_real"));
-	atom_setlong(dump+1, h_real);
-	outlet_list(max->out_dump, 0L, 2, dump);
-
+	if (h_real > 8 && !(t % 9)) {
+		atom_setsym(dump, gensym("h_real"));
+		atom_setfloat(dump+1, h_real);
+		// output real H (scaled)
+		atom_setfloat(dump+2, h_real / ysize);
+		outlet_list(max->out_dump, 0L, 3, dump);
+	}
 	t++;
 	t_mod = (t_mod+1)%fsize;
 }

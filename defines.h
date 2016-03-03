@@ -29,4 +29,4 @@
 #define Kp 0.1467
 #define Ki 0.005051
 #define T_DEQ 3
-#define T_DEQ_ARZT 4
+#define T_ARZT 4
