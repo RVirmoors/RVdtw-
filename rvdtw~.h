@@ -113,8 +113,7 @@ public:
 
 	vector<vector<double> > markers;
 	float tempo;
-	t_uint16 pivot1_t, pivot1_h, pivot2_t, pivot2_h;
-	double tempo_prob;
+	double pivot1_t, pivot1_h, pivot2_t, pivot2_h;
 	float integral; // for PID model		
 	deque<double> tempos; // for DEQ_ARZT model
 	int t_passed;

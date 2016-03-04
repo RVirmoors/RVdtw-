@@ -418,7 +418,7 @@ void Raskell::reset() {
 	b_err.clear();
 	b_err.resize(bsize);
 	for (i=0; i<bsize; i++) {
-		b_err[i].resize(5); // error, t, h, local tempo, used flag
+		b_err[i].resize(4); // error, t, h, local tempo
 	}
 
 	Dist.clear();
@@ -788,7 +788,6 @@ void Raskell::dtw_back() {
 	b_err[b_start][1] = t;
 	b_err[b_start][2] = h;
 	b_err[b_start][3] = 1.f; // local tempo:
-	b_err[b_start][4] = 0; // not yet used
 	if (t > 80)
 		b_err[(b_start-40+bsize)%bsize][3] = 
 			(float)(h - b_err[(b_start-80+bsize)%bsize][2] + 1) / (t - b_err[(b_start-80+bsize)%bsize][1] + 1);
@@ -868,7 +867,7 @@ void Raskell::calc_tempo(int mode) {
 	static double Min = VERY_BIG, Sum;
 	bool new_tempo = false;
 	int K = second, L = second / 2;
-
+	vector<pair<double, double>> pivot1s, pivot2s;
 
 	/*
 	if (error < MAX_RUN / -8) {
@@ -925,16 +924,24 @@ void Raskell::calc_tempo(int mode) {
 						if (popped || Deque.empty()) Deque.push_front(i);
 					}
 					if (!Deque.empty()) {
+						t_uint16 counter = 0;
 						t_uint16 iplusK = (i-K+bsize)%bsize;
 						Sum = b_err[Deque.front()][0] + b_err[iplusK][0];
-						if (Sum < Min && !b_err[iplusK][4]) {
-							// if found new min, and it hasn't been used already
-							tempo_prob = Min = Sum;
+						if (Sum < Min) {
+							// if found new min
+							counter = 0;
+							Min = Sum;
 							pivot1_t = b_err[Deque.front()][1];
 							pivot1_h = b_err[Deque.front()][2];
 							pivot2_t = b_err[iplusK][1];
 							pivot2_h = b_err[iplusK][2];
-							b_err[iplusK][4] = 1; //set used flag
+							new_tempo = true;
+						} else if (Sum == Min) {
+							counter++;
+							pivot1_t = (b_err[Deque.front()][1] + counter * pivot1_t) / (counter + 1); // CMA
+							pivot1_h = (b_err[Deque.front()][2] + counter * pivot1_h) / (counter + 1); // CMA
+							pivot2_t = (b_err[iplusK][1] + counter * pivot2_t) / (counter + 1); // CMA
+							pivot2_h = (b_err[iplusK][2] + counter * pivot2_h) / (counter + 1); // CMA
 							new_tempo = true;
 						}
 					}
@@ -952,8 +959,14 @@ void Raskell::calc_tempo(int mode) {
 					t_passed = t;
 				}			
 				// slowly grow Min so that it can be reached again
-				Min += floor(abs(error));
-				post("Min = %f", Min);
+				bool decr_err = true; int j = 0;
+				while (j < 6 && decr_err) {
+					if (b_err[(b_start-j+bsize)%bsize][0] > b_err[(b_start-1-j+bsize)%bsize][0])
+						decr_err = false;
+					j++;
+				}
+				if (decr_err)
+					Min += abs(error);
 			}
 			break;
 		case T_ARZT:
