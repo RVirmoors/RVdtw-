@@ -226,7 +226,8 @@ Raskell::Raskell() {
 		previous = 0; // 0 = none; 1 = Row; 2 = Column; 3 = Both
 		input_sel = IN_SCORE; // 1 = SCORE; 2 = LIVE; 0 = closed		
 		follow = TRUE;
-		integral = 0;	
+		integral = t_passed = last_arzt = 0;	
+		tempos.clear();
 
 		mid_weight = 0.5; //0.5; //1.9; //1.5
 
@@ -392,7 +393,8 @@ void Raskell::reset() {
 	t = t_mod = h = h_real = h_mod = runCount = iter = m_iter = m_ideal_iter = 0; // current position for online DTW: (t,h)
 	tempo = 1;
 	previous = 0; // 0 = none; 1 = Row; 2 = Column; 3 = Both
-	integral = 0;	
+	integral = t_passed = last_arzt = 0;	
+	tempos.clear();
 	
 	short i;
 
@@ -638,7 +640,7 @@ t_uint16 Raskell::get_inc() {
 	t_uint16 tmin2 = (t_mod+fsize-2) % fsize;
 	t_uint16 hmin2 = (h_mod+fsize-2) % fsize;
 	double min = VERY_BIG;
-	
+	/*
 	if (!CLASSIC && (t > MAX_RUN)) {
 		int difhist = history[t - 1] - history[t - MAX_RUN];
 	
@@ -663,7 +665,7 @@ t_uint16 Raskell::get_inc() {
 				return NEW_ROW;
 		}
 	}
-	
+	*/
 	for (i=0; i<fsize; i++) // if minimum is in row h..
 		if(dtw[i][hmin1] < min) {
 			min = dtw[i][hmin1];
@@ -787,9 +789,9 @@ void Raskell::dtw_back() {
 	b_err[b_start][2] = h;
 	b_err[b_start][3] = 1.f; // local tempo:
 	b_err[b_start][4] = 0; // not yet used
-	if (t > 8)
-		b_err[(b_start-4+bsize)%bsize][3] = 
-			(float)(h - b_err[(b_start-8+bsize)%bsize][2]) / (t - b_err[(b_start-8+bsize)%bsize][1]);
+	if (t > 80)
+		b_err[(b_start-40+bsize)%bsize][3] = 
+			(float)(h - b_err[(b_start-80+bsize)%bsize][2] + 1) / (t - b_err[(b_start-80+bsize)%bsize][1] + 1);
 
 	if (t >= bsize && h >= bsize) { //&& (t % 2)
 		double top, mid, bot, cheapest;
@@ -849,6 +851,8 @@ void Raskell::dtw_back() {
 		}
 		
 		b_err[b_start][0] = abs(history[b_t] - b_h);
+		float diff = b_err[b_start][0] - b_err[(b_start-1+bsize)%bsize][0];
+		b_err[b_start][0] -= diff / 2;
 
 		// output certainty
 		atom_setsym(dump, gensym("b_err"));
@@ -859,14 +863,13 @@ void Raskell::dtw_back() {
 
 void Raskell::calc_tempo(int mode) {
 	int second = SampleRate / HOP_SIZE; // number of frames per second
-	float error = (h - h_real) / (b_err[b_start][0] + 1);	// for all models
+	float error = (h - h_real);	// for all models
 	// for DEQ model
 	static double Min = VERY_BIG, Sum;
 	bool new_tempo = false;
-	int K = second * 2, L = second;
-	static int t_passed = 0;
-	// for DEQ_ARZT model
-	vector<double> tempos;
+	int K = second, L = second / 2;
+
+
 	/*
 	if (error < MAX_RUN / -8) {
 		tempo = 0.00001;
@@ -880,7 +883,10 @@ void Raskell::calc_tempo(int mode) {
 
 	switch(mode) {
 		case T_DTW:
-			tempo = history[t] - history[t-1];
+			if (t % second == 0) {
+				// updated about every 1s
+				tempo = (float)(history[t] - history[t - second]) / second;
+			}
 			break;
 		case T_P:
 			if (t % second == 0) {
@@ -907,7 +913,9 @@ void Raskell::calc_tempo(int mode) {
 			if (t < bsize || h < bsize)
 				tempo = 1;// history[t] - history[t-1]; // not yet active
 			else {				
-				for (int i = (b_start-1+bsize)%bsize; i != b_start; i = (i-1+bsize)%bsize) { // for i++
+				for (int i = (b_start-1+bsize)%bsize; 
+						i != (b_start-(2*K)+bsize)%bsize; 
+						i = (i-1+bsize)%bsize) { // for i++
 					if (i > (b_start-L+bsize)%bsize) { // if i < L
 						bool popped = false;
 						while (!Deque.empty() && b_err[i][0] <= b_err[Deque.front()][0]) {
@@ -935,53 +943,76 @@ void Raskell::calc_tempo(int mode) {
 					// compute new tempo, avoiding divide by 0
 					tempo = (float)(pivot1_h - pivot2_h) / (float)(pivot1_t - pivot2_t);
 					// add PID ajustment:
+					error /= (b_err[b_start][0] + 1);
 					if (abs(error) < 3.f) //anti-windup
 						integral += error;
 					float boost = (Kp*error + Ki*integral) / ((float)t - t_passed + 1);
 					tempo += boost;
-					post("boost = %f", boost);
+					//post("boost = %f", boost);
 					t_passed = t;
 				}			
 				// slowly grow Min so that it can be reached again
-				Min += abs(error);
-				//post("Min = %f", Min);
+				Min += floor(abs(error));
+				post("Min = %f", Min);
 			}
 			break;
 		case T_ARZT:
 			if (t < bsize || h < bsize)
 				tempo = history[t] - history[t-1]; // not yet active
 			else {
-				for (int i = (b_start-4+bsize)%bsize; i != b_start; i = (i-1+bsize)%bsize) { // for i++
-					if(b_err[i][0] < Min && tempos.size() <= 20) {
+				int i = (b_start-4+bsize)%bsize, j = 0;
+				while (j < 2*K && b_err[i][1] > t_passed + 20) {
+					if(b_err[i][0] < Min) {
 						new_tempo = true;
 						Min = b_err[i][0];
-						tempos.push_back(b_err[i][3]);
-						if (i - b_start > 40) // spread them out
-							i = (i-40+bsize)%bsize;
-					}					
+						t_passed = b_err[i][1];
+						last_arzt = b_err[i][3];
+						if (2*K - j > 80) { // spread them out 
+							j += 80;
+							i = (i-80+bsize)%bsize;
+						}
+					}
+					j++;
+					i = (i-1+bsize)%bsize;
 				}
-				if (new_tempo && tempos.size() > 2) {
-					tempo = 0;
-					for (int i = 0; i < tempos.size(); i++)
-						tempo += tempos[i] * (tempos.size() - i);	// sum of tempos[i]*(n-i)
-					tempo /= tempos.size() * (tempos.size()+1) / 2; // sum of 1..n
-					// add PID ajustment:
-					if (abs(error) < 3.f) //anti-windup
-						integral += error;
-					float boost = (Kp*error + Ki*integral) / ((float)t - t_passed + 1);
-					tempo += boost;
-					t_passed = t;
+				if (new_tempo) {
+					tempos.push_back(last_arzt);
+					post("Added tempo %f, total %d tempos, t = %d", Min, tempos.size(), t);
+					if (tempos.size() == 21)
+						tempos.pop_front();
+					if (tempos.size() > 15) {
+						tempo = i = 0;
+						for (deque<double>::iterator it = tempos.begin(); it!=tempos.end(); ++it) {
+							tempo += *it * i;	// sum of tempos[i]*(n-i)
+							i++;
+						}						
+						tempo /= tempos.size() * (tempos.size()+1) / 2; // sum of 1..n
+						// add PID ajustment:
+						error /= (b_err[b_start][0] + 1);
+						if (abs(error) < 3.f) //anti-windup
+							integral += error;
+						float boost = (Kp*error + Ki*integral) / ((float)t - t_passed + 1);
+						tempo += boost;
+						t_passed = t;
+					}
 				}
 				// slowly grow Min so that it can be reached again
-				Min += abs(error);
+				bool decr_err = true; j = 0;
+				while (j < 6 && decr_err) {
+					if (b_err[(b_start-4-j+bsize)%bsize][0] > b_err[(b_start-5-j+bsize)%bsize][0])
+						decr_err = false;
+					j++;
+				}
+				if (decr_err)
+					Min += abs(error) / 10;
 			}
 			break;
 	}
 }
 
 void Raskell::increment_t() {
-	if (t > 8) // TODO : set this
-		calc_tempo(T_PID);	
+	if (t > 100) // TODO : set this
+		calc_tempo(T_DEQ);	
 	if (tempo)
 		outlet_float(max->out_tempo, tempo);
 		h_real += tempo;

@@ -33,7 +33,7 @@
 #define MAXLENGTH 5000000 //maximum input file length (# of frames)
 #define VERY_BIG  (1e10)
 //#define THRESH 0 //0.4 // base threshold for marker admission
-#define MAX_RUN 64// 3 //64//50000    minimum 4; should not surpass fsize
+#define MAX_RUN 96// 3 //64//50000    minimum 4; should not surpass fsize
 #define ALPHA 1
 #define CLASSIC 0
 
@@ -115,7 +115,10 @@ public:
 	float tempo;
 	t_uint16 pivot1_t, pivot1_h, pivot2_t, pivot2_h;
 	double tempo_prob;
-	float integral; // for PID model
+	float integral; // for PID model		
+	deque<double> tempos; // for DEQ_ARZT model
+	int t_passed;
+	double last_arzt;
 
 	t_uint16 runCount, maxRunCount, m_iter, m_ideal_iter, m_count, input_sel;
 	t_atom dump[50];
