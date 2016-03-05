@@ -22,7 +22,8 @@ int C74_EXPORT main(void) {
 	class_addmethod(c, (method)RVdtw_gotoms,	"gotoms",	A_GIMME, 0);
 	class_addmethod(c, (method)RVdtw_start,		"start",	A_GIMME, 0);
 	class_addmethod(c, (method)RVdtw_stop,		"stop",		A_GIMME, 0);
-	class_addmethod(c, (method)RVdtw_follow,	"follow",		A_GIMME, 0);
+	class_addmethod(c, (method)RVdtw_follow,	"follow",		A_GIMME, 0);	
+	class_addmethod(c, (method)RVdtw_sensitivity,	"sensitivity",	A_GIMME, 0);
 
 	class_addmethod(c, (method)RVdtw_dblclick,	"dblclick",	A_CANT, 0);	
 	class_addmethod(c, (method)RVdtw_notify,	"notify",	A_CANT, 0);
@@ -154,6 +155,11 @@ void RVdtw_follow(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv) {
 	}
 }
 
+void RVdtw_sensitivity(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv) {
+	x->rv->sensitivity = atom_getfloat(argv);
+	post("Sensitivity to tempo fluctuations is %f", x->rv->sensitivity);
+}
+
 // this lets us double-click to open up the buffer~ it references
 void RVdtw_dblclick(t_RVdtw *x) {
 	buffer_view(buffer_ref_getobject(x->rv->l_buffer_reference));
@@ -218,14 +224,14 @@ void RVdtw_perform64(t_RVdtw *x, t_object *dsp64, double **ins, long numins, dou
 } // end extern C
 
 
-Raskell::Raskell() {
-	
+Raskell::Raskell() {	
 		ysize = t = h = h_real = runCount = iter = m_iter = m_ideal_iter = t_mod = h_mod = 0; // current position for online DTW: (t,h)
 		tempo = 1;
 		m_count = 0; // one marker is mandatory (to start)
 		previous = 0; // 0 = none; 1 = Row; 2 = Column; 3 = Both
 		input_sel = IN_SCORE; // 1 = SCORE; 2 = LIVE; 0 = closed		
 		follow = TRUE;
+		sensitivity = SEN; // sens. to tempo fluctuations
 		integral = t_passed = last_arzt = 0;	
 		tempos.clear();
 
@@ -851,7 +857,8 @@ void Raskell::dtw_back() {
 		
 		b_err[b_start][0] = abs(history[b_t] - b_h);
 		float diff = b_err[b_start][0] - b_err[(b_start-1+bsize)%bsize][0];
-		b_err[b_start][0] -= diff / 2;
+		if (diff < 0)
+			b_err[b_start][0] -= diff / 2;
 
 		// output certainty
 		atom_setsym(dump, gensym("b_err"));
@@ -861,24 +868,13 @@ void Raskell::dtw_back() {
 }
 
 void Raskell::calc_tempo(int mode) {
+	if (t == 0) return;
 	int second = SampleRate / HOP_SIZE; // number of frames per second
 	float error = (h - h_real);	// for all models
 	// for DEQ model
 	static double Min = VERY_BIG, Sum;
 	bool new_tempo = false;
-	int K = second, L = second / 2;
-	vector<pair<double, double>> pivot1s, pivot2s;
-
-	/*
-	if (error < MAX_RUN / -8) {
-		tempo = 0.00001;
-		return;
-	}
-	if (error > MAX_RUN / 8) {
-		tempo = 100000;
-		return;
-	}*/
-		
+	int K = second / 2, L = second / 2;
 
 	switch(mode) {
 		case T_DTW:
@@ -912,12 +908,14 @@ void Raskell::calc_tempo(int mode) {
 			if (t < bsize || h < bsize)
 				tempo = 1;// history[t] - history[t-1]; // not yet active
 			else {				
+				pivot1_t = pivot1_h = pivot2_t = pivot2_h = 0;
+				int j = 0;
 				for (int i = (b_start-1+bsize)%bsize; 
-						i != (b_start-(2*K)+bsize)%bsize; 
+						j < bsize - K - 2; 
 						i = (i-1+bsize)%bsize) { // for i++
-					if (i > (b_start-L+bsize)%bsize) { // if i < L
+					if (j < L) { // if i < L
 						bool popped = false;
-						while (!Deque.empty() && b_err[i][0] <= b_err[Deque.front()][0]) {
+						while (!Deque.empty() && b_err[i][0] < b_err[Deque.front()][0]) {
 							Deque.pop_front();   
 							popped = true;
 						}
@@ -937,7 +935,7 @@ void Raskell::calc_tempo(int mode) {
 							pivot2_h = b_err[iplusK][2];
 							new_tempo = true;
 						} else if (Sum == Min) {
-							counter++;
+							if (pivot1_t) counter++;
 							pivot1_t = (b_err[Deque.front()][1] + counter * pivot1_t) / (counter + 1); // CMA
 							pivot1_h = (b_err[Deque.front()][2] + counter * pivot1_h) / (counter + 1); // CMA
 							pivot2_t = (b_err[iplusK][1] + counter * pivot2_t) / (counter + 1); // CMA
@@ -945,33 +943,34 @@ void Raskell::calc_tempo(int mode) {
 							new_tempo = true;
 						}
 					}
+					j++;
 				} 
 				if (new_tempo && pivot1_t != pivot2_t) {
 					// compute new tempo, avoiding divide by 0
 					tempo = (float)(pivot1_h - pivot2_h) / (float)(pivot1_t - pivot2_t);
 					// add PID ajustment:
-					error /= (b_err[b_start][0] + 1);
+					error /= (b_err[b_start][0] + 10);
 					if (abs(error) < 3.f) //anti-windup
 						integral += error;
 					float boost = (Kp*error + Ki*integral) / ((float)t - t_passed + 1);
 					tempo += boost;
-					//post("boost = %f", boost);
+					post("pivots %f : %f, tempo = %f", pivot1_t, pivot2_t, tempo);
 					t_passed = t;
 				}			
 				// slowly grow Min so that it can be reached again
-				bool decr_err = true; int j = 0;
+				bool decr_err = true; j = 0;
 				while (j < 6 && decr_err) {
 					if (b_err[(b_start-j+bsize)%bsize][0] > b_err[(b_start-1-j+bsize)%bsize][0])
 						decr_err = false;
 					j++;
 				}
-				if (decr_err)
+				if (decr_err && Min < 3.f)
 					Min += abs(error);
 			}
 			break;
 		case T_ARZT:
 			if (t < bsize || h < bsize)
-				tempo = history[t] - history[t-1]; // not yet active
+				tempo = 1;//history[t] - history[t-1]; // not yet active
 			else {
 				int i = (b_start-4+bsize)%bsize, j = 0;
 				while (j < 2*K && b_err[i][1] > t_passed + 20) {
@@ -1024,8 +1023,17 @@ void Raskell::calc_tempo(int mode) {
 }
 
 void Raskell::increment_t() {
-	if (t > 100) // TODO : set this
+	float error = h - h_real;
+	static short calc = 0; //bool
+	// sensitivity to tempo fluctuations:
+	if (abs(error) > pow(1.f-sensitivity, 2)*100.f) {
 		calc_tempo(T_DEQ);	
+		calc = 1;
+	}		
+	else if (abs(error) <= 1 && calc) {
+		tempo = b_err[(b_start-4+bsize)%bsize][3];
+		calc = 0;
+	}
 	if (tempo)
 		outlet_float(max->out_tempo, tempo);
 		h_real += tempo;
@@ -1035,7 +1043,9 @@ void Raskell::increment_t() {
 		atom_setfloat(dump+1, h_real);
 		// output real H (scaled)
 		atom_setfloat(dump+2, h_real / ysize);
-		outlet_list(max->out_dump, 0L, 3, dump);
+		// output active tempo calculation toggle
+		atom_setlong(dump+3, calc);
+		outlet_list(max->out_dump, 0L, 4, dump);
 	}
 	t++;
 	t_mod = (t_mod+1)%fsize;

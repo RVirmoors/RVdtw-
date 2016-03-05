@@ -33,7 +33,7 @@
 #define MAXLENGTH 5000000 //maximum input file length (# of frames)
 #define VERY_BIG  (1e10)
 //#define THRESH 0 //0.4 // base threshold for marker admission
-#define MAX_RUN 96// 3 //64//50000    minimum 4; should not surpass fsize
+#define MAX_RUN 64// 3 //64//50000    minimum 4; should not surpass fsize
 #define ALPHA 1
 #define CLASSIC 0
 
@@ -79,6 +79,7 @@ extern "C" {
 	void RVdtw_start(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv);
 	void RVdtw_stop(t_RVdtw *x, t_symbol *s);
 	void RVdtw_follow(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv);
+	void RVdtw_sensitivity(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv);
 
 	void RVdtw_dblclick(t_RVdtw *x);
 	t_max_err RVdtw_notify(t_RVdtw *x, t_symbol *s, t_symbol *msg, void *sender, void *data);
@@ -118,6 +119,7 @@ public:
 	deque<double> tempos; // for DEQ_ARZT model
 	int t_passed;
 	double last_arzt;
+	float sensitivity; // tempo fluctuations
 
 	t_uint16 runCount, maxRunCount, m_iter, m_ideal_iter, m_count, input_sel;
 	t_atom dump[50];

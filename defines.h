@@ -30,3 +30,5 @@
 #define Ki 0.005051
 #define T_DEQ 3
 #define T_ARZT 4
+
+#define SEN 0.8//1
