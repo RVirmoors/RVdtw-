@@ -931,24 +931,15 @@ void Raskell::calc_tempo(int mode) {
 						i = (i-1+bsize)%bsize) { // for i++
 					if (j < L) { // if i < L
 						bool popped = false;
-						if (!Deque.empty()) {
-							float derr_i = (b_err[i][0]-b_err[(i-1+bsize)%bsize][0])/(b_err[i][0]+1);
-							float derr_front = 
-								(b_err[Deque.front()][0]-b_err[(Deque.front()-1+bsize)%bsize][0])/(b_err[Deque.front()][0]+1);
-							while (!Deque.empty() && (derr_i < derr_front)) {
-								Deque.pop_front();   
-								popped = true;
-							}
+						while (!Deque.empty() && abs(b_err[i][0]) < abs(b_err[Deque.front()][0])) {
+							Deque.pop_front();   
+							popped = true;
 						}
 						if (popped || Deque.empty()) Deque.push_front(i);
 					}
 					if (!Deque.empty()) {
 						t_uint16 iplusK = (i-K+bsize)%bsize;
-						t_uint16 ipKm1 = (i-K-1+bsize)%bsize;
-						float derr_iplusK = (b_err[iplusK][0]-b_err[ipKm1][0])/(b_err[iplusK][0]+1);
-						float derr_front = 
-							(b_err[Deque.front()][0]-b_err[(Deque.front()-1+bsize)%bsize][0])/(b_err[Deque.front()][0]+1);
-						Sum = derr_front + derr_iplusK;
+						Sum = abs(b_err[Deque.front()][0]) + abs(b_err[iplusK][0]);
 						if (Sum < Min) {
 							// if found new min
 							counter = 0;
@@ -978,7 +969,7 @@ void Raskell::calc_tempo(int mode) {
 						integral += error;
 					float boost = (Kp*error + Ki*integral) / ((float)t - t_passed + 1);
 					tempo += boost;
-					post("pivots %f : %f, Min = %f", pivot1_t, pivot2_t, Min);
+					post("pivots %f : %f, count = %f", pivot1_t, pivot2_t, counter);
 					t_passed = t;
 				}			
 				// slowly grow Min so that it can be reached again
@@ -1051,7 +1042,7 @@ void Raskell::increment_t() {
 	static short calc = 0; //bool
 	// sensitivity to tempo fluctuations:
 	if (abs(error) > pow(1.f-sensitivity, 2)*100.f) {
-		calc_tempo(T_PID);	
+		calc_tempo(T_DEQ);	
 		calc = 1;
 	}		
 	else if (abs(error) <= 1 && calc) {
