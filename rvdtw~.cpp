@@ -235,9 +235,9 @@ Raskell::Raskell() {
 		integral = t_passed = last_arzt = 0;	
 		tempos.clear();
 
-		mid_weight = 0.5; //0.5; //1.9; //1.5
-
-		side_weight = 1; //1
+		mid_weight = MID;
+		top_weight = SIDE;
+		bot_weight = SIDE;
 
 		maxRunCount = MAX_RUN; // tempo between 1/x and x
 		params = 40; // ysize; // # of feats at input
@@ -396,9 +396,10 @@ void Raskell::marker(t_symbol * s) {
 }
 
 void Raskell::reset() {
-	t = t_mod = h = h_real = h_mod = runCount = iter = m_iter = m_ideal_iter = 0; // current position for online DTW: (t,h)
+	t = t_mod = b_start = h = h_real = h_mod = runCount = iter = m_iter = m_ideal_iter = 0; // current position for online DTW: (t,h)
 	tempo = 1;
 	previous = 0; // 0 = none; 1 = Row; 2 = Column; 3 = Both
+	top_weight = bot_weight = SIDE;
 	integral = t_passed = last_arzt = 0;	
 	tempos.clear();
 	
@@ -700,9 +701,9 @@ void Raskell::calc_dtw(t_uint16 i, t_uint16 j) {
 	t_uint16 imod = i % fsize;
 	t_uint16 jmod = j % fsize;		
 
-	top = dtw[imin2][jmin1] + Dist[i%bsize][j%bsize] * side_weight;
+	top = dtw[imin2][jmin1] + Dist[i%bsize][j%bsize] * top_weight;
 	mid = dtw[imin1][jmin1] + Dist[i%bsize][j%bsize] * mid_weight;
-	bot = dtw[imin1][jmin2] + Dist[i%bsize][j%bsize] * side_weight;
+	bot = dtw[imin1][jmin2] + Dist[i%bsize][j%bsize] * bot_weight;
 
 	if( (top < mid) && (top < bot))	{ 
 		cheapest = top;
@@ -816,9 +817,9 @@ void Raskell::dtw_back() {
 				t_uint16 jmin1 = (j+1) % bsize;
 				t_uint16 jmin2 = (j+2) % bsize;
 
-				top = b_dtw[imin2][jmin1] + Dist[imod][jmod] * side_weight;
+				top = b_dtw[imin2][jmin1] + Dist[imod][jmod] * top_weight;
 				mid = b_dtw[imin1][jmin1] + Dist[imod][jmod] * mid_weight;
-				bot = b_dtw[imin1][jmin2] + Dist[imod][jmod] * side_weight;
+				bot = b_dtw[imin1][jmin2] + Dist[imod][jmod] * bot_weight;
 
 				if( (top < mid) && (top < bot))	{ 
 					cheapest = top; b_move[imod][jmod] = NEW_ROW;
@@ -855,11 +856,25 @@ void Raskell::dtw_back() {
 			p++;
 		}
 		
-		b_err[b_start][0] = abs(history[b_t] - b_h);
-		float diff = b_err[b_start][0] - b_err[(b_start-1+bsize)%bsize][0];
-		if (diff < 0)
-			b_err[b_start][0] -= diff / 2;
-
+		b_err[b_start][0] = history[b_t] - b_h;
+		//float diff = b_err[b_start][0] - b_err[(b_start-1+bsize)%bsize][0];
+		//if (diff < 0)
+		//	b_err[b_start][0] -= diff / 2;
+		
+		//if (!(t % 90)) {
+			if (b_err[b_start][0] > 5) { // gotta go DOWN
+				if (bot_weight < 20) bot_weight += abs(b_err[b_start][0]) / 50;
+				post("bot w = %f", bot_weight);
+			}
+			else if (b_err[b_start][0] < -5) {	// gotta go UP			
+				if (top_weight < 20) top_weight += abs(b_err[b_start][0]) / 50;
+				post("top w = %f", top_weight);
+			}
+			else {
+				top_weight = bot_weight = SIDE;
+			}
+		//}
+		
 		// output certainty
 		atom_setsym(dump, gensym("b_err"));
 		atom_setlong(dump+1, b_err[b_start][0]);
@@ -874,7 +889,8 @@ void Raskell::calc_tempo(int mode) {
 	// for DEQ model
 	static double Min = VERY_BIG, Sum;
 	bool new_tempo = false;
-	int K = second / 2, L = second / 2;
+	int K = second, L = second / 2;
+	t_uint16 counter = 0;
 
 	switch(mode) {
 		case T_DTW:
@@ -915,16 +931,24 @@ void Raskell::calc_tempo(int mode) {
 						i = (i-1+bsize)%bsize) { // for i++
 					if (j < L) { // if i < L
 						bool popped = false;
-						while (!Deque.empty() && b_err[i][0] < b_err[Deque.front()][0]) {
-							Deque.pop_front();   
-							popped = true;
+						if (!Deque.empty()) {
+							float derr_i = (b_err[i][0]-b_err[(i-1+bsize)%bsize][0])/(b_err[i][0]+1);
+							float derr_front = 
+								(b_err[Deque.front()][0]-b_err[(Deque.front()-1+bsize)%bsize][0])/(b_err[Deque.front()][0]+1);
+							while (!Deque.empty() && (derr_i < derr_front)) {
+								Deque.pop_front();   
+								popped = true;
+							}
 						}
 						if (popped || Deque.empty()) Deque.push_front(i);
 					}
 					if (!Deque.empty()) {
-						t_uint16 counter = 0;
 						t_uint16 iplusK = (i-K+bsize)%bsize;
-						Sum = b_err[Deque.front()][0] + b_err[iplusK][0];
+						t_uint16 ipKm1 = (i-K-1+bsize)%bsize;
+						float derr_iplusK = (b_err[iplusK][0]-b_err[ipKm1][0])/(b_err[iplusK][0]+1);
+						float derr_front = 
+							(b_err[Deque.front()][0]-b_err[(Deque.front()-1+bsize)%bsize][0])/(b_err[Deque.front()][0]+1);
+						Sum = derr_front + derr_iplusK;
 						if (Sum < Min) {
 							// if found new min
 							counter = 0;
@@ -949,18 +973,18 @@ void Raskell::calc_tempo(int mode) {
 					// compute new tempo, avoiding divide by 0
 					tempo = (float)(pivot1_h - pivot2_h) / (float)(pivot1_t - pivot2_t);
 					// add PID ajustment:
-					error /= (b_err[b_start][0] + 10);
+					error /= (abs(b_err[b_start][0]) + 1);
 					if (abs(error) < 3.f) //anti-windup
 						integral += error;
 					float boost = (Kp*error + Ki*integral) / ((float)t - t_passed + 1);
 					tempo += boost;
-					post("pivots %f : %f, tempo = %f", pivot1_t, pivot2_t, tempo);
+					post("pivots %f : %f, Min = %f", pivot1_t, pivot2_t, Min);
 					t_passed = t;
 				}			
 				// slowly grow Min so that it can be reached again
 				bool decr_err = true; j = 0;
 				while (j < 6 && decr_err) {
-					if (b_err[(b_start-j+bsize)%bsize][0] > b_err[(b_start-1-j+bsize)%bsize][0])
+					if (abs(b_err[(b_start-j+bsize)%bsize][0]) > abs(b_err[(b_start-1-j+bsize)%bsize][0]))
 						decr_err = false;
 					j++;
 				}
@@ -974,14 +998,14 @@ void Raskell::calc_tempo(int mode) {
 			else {
 				int i = (b_start-4+bsize)%bsize, j = 0;
 				while (j < 2*K && b_err[i][1] > t_passed + 20) {
-					if(b_err[i][0] < Min) {
+					if(abs(b_err[i][0]) < Min) {
 						new_tempo = true;
-						Min = b_err[i][0];
+						Min = abs(b_err[i][0]);
 						t_passed = b_err[i][1];
 						last_arzt = b_err[i][3];
-						if (2*K - j > 80) { // spread them out 
-							j += 80;
-							i = (i-80+bsize)%bsize;
+						if (2*K - j > 40) { // spread them out 
+							j += 40;
+							i = (i-40+bsize)%bsize;
 						}
 					}
 					j++;
@@ -1000,7 +1024,7 @@ void Raskell::calc_tempo(int mode) {
 						}						
 						tempo /= tempos.size() * (tempos.size()+1) / 2; // sum of 1..n
 						// add PID ajustment:
-						error /= (b_err[b_start][0] + 1);
+						error /= (abs(b_err[b_start][0]) + 1);
 						if (abs(error) < 3.f) //anti-windup
 							integral += error;
 						float boost = (Kp*error + Ki*integral) / ((float)t - t_passed + 1);
@@ -1011,12 +1035,12 @@ void Raskell::calc_tempo(int mode) {
 				// slowly grow Min so that it can be reached again
 				bool decr_err = true; j = 0;
 				while (j < 6 && decr_err) {
-					if (b_err[(b_start-4-j+bsize)%bsize][0] > b_err[(b_start-5-j+bsize)%bsize][0])
+					if (abs(b_err[(b_start-4-j+bsize)%bsize][0]) > abs(b_err[(b_start-5-j+bsize)%bsize][0]))
 						decr_err = false;
 					j++;
 				}
 				if (decr_err)
-					Min += abs(error) / 10;
+					Min += abs(error);
 			}
 			break;
 	}
@@ -1027,16 +1051,27 @@ void Raskell::increment_t() {
 	static short calc = 0; //bool
 	// sensitivity to tempo fluctuations:
 	if (abs(error) > pow(1.f-sensitivity, 2)*100.f) {
-		calc_tempo(T_DEQ);	
+		calc_tempo(T_PID);	
 		calc = 1;
 	}		
 	else if (abs(error) <= 1 && calc) {
 		tempo = b_err[(b_start-4+bsize)%bsize][3];
 		calc = 0;
 	}
-	if (tempo)
-		outlet_float(max->out_tempo, tempo);
-		h_real += tempo;
+	if (tempo > 0) {
+		if (tempo < 3 && tempo > 0.33) {
+			outlet_float(max->out_tempo, tempo);
+			h_real += tempo;
+		} else { // TODO test this!!!
+			post("OUT OF CONTROL");
+			tempo = 1;
+			if (Dist[t%bsize][h%bsize] > Dist[t%bsize][(int)h_real%bsize] * 1.2) {
+				h = h_real;
+				h_mod = h % fsize;
+			} else
+				h_real = h;				
+		}
+	}
 	// output real H
 	if (h_real > 8 && !(t % 9)) {
 		atom_setsym(dump, gensym("h_real"));
@@ -1046,7 +1081,7 @@ void Raskell::increment_t() {
 		// output active tempo calculation toggle
 		atom_setlong(dump+3, calc);
 		outlet_list(max->out_dump, 0L, 4, dump);
-	}
+	} 
 	t++;
 	t_mod = (t_mod+1)%fsize;
 }

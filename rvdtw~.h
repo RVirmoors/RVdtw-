@@ -29,13 +29,17 @@
 #define WINDOW_SIZE 2048
 #define HOP_SIZE 512
 
+#define CLASSIC 0
+
 // DTW params
 #define MAXLENGTH 5000000 //maximum input file length (# of frames)
 #define VERY_BIG  (1e10)
 //#define THRESH 0 //0.4 // base threshold for marker admission
 #define MAX_RUN 64// 3 //64//50000    minimum 4; should not surpass fsize
 #define ALPHA 1
-#define CLASSIC 0
+#define MID 0.5 //0.5; //1.9; //1.5
+#define SIDE 1
+#define SEN 0.8 // // 0.98//1
 
 // compression params
 #define COMP_THRESH -140
@@ -107,9 +111,9 @@ public:
 	vector<t_uint16> history;
 	vector<vector<double> > b_path, b_err;
 	vector<vector<double> > Dist, dtw, b_dtw, b_move;
-	deque<double> Deque;
+	deque<t_uint16> Deque;
 	t_uint16 b_start, bh_start;
-	float mid_weight, side_weight;
+	float mid_weight, top_weight, bot_weight;
 	bool follow;
 
 	vector<vector<double> > markers;
