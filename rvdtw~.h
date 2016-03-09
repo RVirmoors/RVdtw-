@@ -113,6 +113,7 @@ public:
 	vector<vector<double> > Dist, dtw, b_dtw, b_move;
 	deque<t_uint16> Deque;
 	t_uint16 b_start, bh_start;
+	double b_avgerr;
 	float mid_weight, top_weight, bot_weight;
 	bool follow;
 

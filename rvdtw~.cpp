@@ -226,6 +226,7 @@ void RVdtw_perform64(t_RVdtw *x, t_object *dsp64, double **ins, long numins, dou
 
 Raskell::Raskell() {	
 		ysize = t = h = h_real = runCount = iter = m_iter = m_ideal_iter = t_mod = h_mod = 0; // current position for online DTW: (t,h)
+		b_avgerr = b_start = bh_start = 0;
 		tempo = 1;
 		m_count = 0; // one marker is mandatory (to start)
 		previous = 0; // 0 = none; 1 = Row; 2 = Column; 3 = Both
@@ -396,7 +397,8 @@ void Raskell::marker(t_symbol * s) {
 }
 
 void Raskell::reset() {
-	t = t_mod = b_start = h = h_real = h_mod = runCount = iter = m_iter = m_ideal_iter = 0; // current position for online DTW: (t,h)
+	t = t_mod = h = h_real = h_mod = runCount = iter = m_iter = m_ideal_iter = 0; // current position for online DTW: (t,h)
+	b_avgerr = b_start = bh_start = 0;
 	tempo = 1;
 	previous = 0; // 0 = none; 1 = Row; 2 = Column; 3 = Both
 	top_weight = bot_weight = SIDE;
@@ -857,6 +859,8 @@ void Raskell::dtw_back() {
 		}
 		
 		b_err[b_start][0] = history[b_t] - b_h;
+		b_avgerr += b_err[b_start][0] / 40;
+		b_avgerr -= b_err[(b_start-40+bsize)%bsize][0] / 40;
 		//float diff = b_err[b_start][0] - b_err[(b_start-1+bsize)%bsize][0];
 		//if (diff < 0)
 		//	b_err[b_start][0] -= diff / 2;
@@ -864,11 +868,11 @@ void Raskell::dtw_back() {
 		//if (!(t % 90)) {
 			if (b_err[b_start][0] > 5) { // gotta go DOWN
 				if (bot_weight < 20) bot_weight += abs(b_err[b_start][0]) / 50;
-				post("bot w = %f", bot_weight);
+				//post("bot w = %f", bot_weight);
 			}
 			else if (b_err[b_start][0] < -5) {	// gotta go UP			
 				if (top_weight < 20) top_weight += abs(b_err[b_start][0]) / 50;
-				post("top w = %f", top_weight);
+				//post("top w = %f", top_weight);
 			}
 			else {
 				top_weight = bot_weight = SIDE;
@@ -878,7 +882,8 @@ void Raskell::dtw_back() {
 		// output certainty
 		atom_setsym(dump, gensym("b_err"));
 		atom_setlong(dump+1, b_err[b_start][0]);
-		outlet_list(max->out_dump, 0L, 2, dump);
+		atom_setfloat(dump+2, b_avgerr);
+		outlet_list(max->out_dump, 0L, 3, dump);
 	}
 }
 
@@ -887,6 +892,7 @@ void Raskell::calc_tempo(int mode) {
 	int second = SampleRate / HOP_SIZE; // number of frames per second
 	float error = (h - h_real);	// for all models
 	// for DEQ model
+	static double Max = 0; 
 	static double Min = VERY_BIG, Sum;
 	bool new_tempo = false;
 	int K = second, L = second / 2;
@@ -920,9 +926,9 @@ void Raskell::calc_tempo(int mode) {
 		case T_DEQ:
 			// get tempo pivots from history via deque: http://www.infoarena.ro/deque-si-aplicatii
 			// first pivot is within L steps from path origin
-			// 2nd pivot is at least K steps away from 1st, AND minimizes SUM(b_err[pivots])
+			// 2nd pivot is at least K steps away from 1st, AND maximizes SUM(b_err[pivots])
 			if (t < bsize || h < bsize)
-				tempo = 1;// history[t] - history[t-1]; // not yet active
+				tempo = history[t] - history[t-1]; // not yet active
 			else {				
 				pivot1_t = pivot1_h = pivot2_t = pivot2_h = 0;
 				int j = 0;
@@ -931,32 +937,43 @@ void Raskell::calc_tempo(int mode) {
 						i = (i-1+bsize)%bsize) { // for i++
 					if (j < L) { // if i < L
 						bool popped = false;
-						while (!Deque.empty() && abs(b_err[i][0]) < abs(b_err[Deque.front()][0])) {
-							Deque.pop_front();   
-							popped = true;
+						if (!Deque.empty()) {
+							float derr_i = abs(b_err[i][0]-b_err[(i-4+bsize)%bsize][0]) / 4;
+							float derr_q = abs(b_err[Deque.front()][0]-b_err[(Deque.front()-4+bsize)%bsize][0]) / 4;
+							while (!Deque.empty() && derr_i > derr_q) {
+								Deque.pop_front();   
+								popped = true;
+							}					
 						}
 						if (popped || Deque.empty()) Deque.push_front(i);
 					}
 					if (!Deque.empty()) {
 						t_uint16 iplusK = (i-K+bsize)%bsize;
-						Sum = abs(b_err[Deque.front()][0]) + abs(b_err[iplusK][0]);
-						if (Sum < Min) {
-							// if found new min
-							counter = 0;
-							Min = Sum;
-							pivot1_t = b_err[Deque.front()][1];
-							pivot1_h = b_err[Deque.front()][2];
-							pivot2_t = b_err[iplusK][1];
-							pivot2_h = b_err[iplusK][2];
-							new_tempo = true;
-						} else if (Sum == Min) {
-							if (pivot1_t) counter++;
-							pivot1_t = (b_err[Deque.front()][1] + counter * pivot1_t) / (counter + 1); // CMA
-							pivot1_h = (b_err[Deque.front()][2] + counter * pivot1_h) / (counter + 1); // CMA
-							pivot2_t = (b_err[iplusK][1] + counter * pivot2_t) / (counter + 1); // CMA
-							pivot2_h = (b_err[iplusK][2] + counter * pivot2_h) / (counter + 1); // CMA
-							new_tempo = true;
+						float derr_ipK = abs(b_err[iplusK][0]-b_err[(iplusK-4+bsize)%bsize][0]) / 4;
+						float derr_q = abs(b_err[Deque.front()][0]-b_err[(Deque.front()-4+bsize)%bsize][0]) / 4;
+						Sum = derr_q + derr_ipK;
+						if (pivot1_t != b_err[Deque.front()][1]) {
+							if (Sum > Max) {
+								if (abs(b_err[Deque.front()][0]-b_avgerr) > 3.f) {
+									// if found new Max
+									counter = 0;
+									Max = Sum;
+									pivot1_t = b_err[Deque.front()][1];
+									pivot1_h = b_err[Deque.front()][2];
+									pivot2_t = b_err[iplusK][1];
+									pivot2_h = b_err[iplusK][2];
+									new_tempo = true;
+								} else {
+									if (pivot1_t) counter++;
+									pivot1_t = (b_err[Deque.front()][1] + counter * pivot1_t) / (counter + 1); // CMA
+									pivot1_h = (b_err[Deque.front()][2] + counter * pivot1_h) / (counter + 1); // CMA
+									pivot2_t = (b_err[iplusK][1] + counter * pivot2_t) / (counter + 1); // CMA
+									pivot2_h = (b_err[iplusK][2] + counter * pivot2_h) / (counter + 1); // CMA
+									new_tempo = true;
+								}
+							}
 						}
+
 					}
 					j++;
 				} 
@@ -964,23 +981,23 @@ void Raskell::calc_tempo(int mode) {
 					// compute new tempo, avoiding divide by 0
 					tempo = (float)(pivot1_h - pivot2_h) / (float)(pivot1_t - pivot2_t);
 					// add PID ajustment:
-					error /= (abs(b_err[b_start][0]) + 1);
+					//error /= (abs(b_err[b_start][0]) + 1);
 					if (abs(error) < 3.f) //anti-windup
 						integral += error;
 					float boost = (Kp*error + Ki*integral) / ((float)t - t_passed + 1);
 					tempo += boost;
-					post("pivots %f : %f, count = %f", pivot1_t, pivot2_t, counter);
+					post("pivots %f : %f, count = %d", pivot1_t, pivot2_t, counter);
 					t_passed = t;
 				}			
 				// slowly grow Min so that it can be reached again
-				bool decr_err = true; j = 0;
+				/*bool decr_err = true; j = 0;
 				while (j < 6 && decr_err) {
 					if (abs(b_err[(b_start-j+bsize)%bsize][0]) > abs(b_err[(b_start-1-j+bsize)%bsize][0]))
 						decr_err = false;
 					j++;
 				}
-				if (decr_err && Min < 3.f)
-					Min += abs(error);
+				if (decr_err && Max < 3.f)*/
+					Max -= abs(error) / 10;
 			}
 			break;
 		case T_ARZT:
