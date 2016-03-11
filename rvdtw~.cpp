@@ -938,8 +938,8 @@ void Raskell::calc_tempo(int mode) {
 					if (j < L) { // if i < L
 						bool popped = false;
 						if (!Deque.empty()) {
-							float derr_i = abs(b_err[i][0]-b_err[(i-4+bsize)%bsize][0]) / 4;
-							float derr_q = abs(b_err[Deque.front()][0]-b_err[(Deque.front()-4+bsize)%bsize][0]) / 4;
+							float derr_i = abs(b_err[i][0]-b_avgerr); //abs(b_err[i][0]-b_err[(i-4+bsize)%bsize][0]) / 4;
+							float derr_q = abs(b_err[Deque.front()][0]-b_avgerr);//abs(b_err[Deque.front()][0]-b_err[(Deque.front()-4+bsize)%bsize][0]) / 4;
 							while (!Deque.empty() && derr_i > derr_q) {
 								Deque.pop_front();   
 								popped = true;
@@ -949,8 +949,8 @@ void Raskell::calc_tempo(int mode) {
 					}
 					if (!Deque.empty()) {
 						t_uint16 iplusK = (i-K+bsize)%bsize;
-						float derr_ipK = abs(b_err[iplusK][0]-b_err[(iplusK-4+bsize)%bsize][0]) / 4;
-						float derr_q = abs(b_err[Deque.front()][0]-b_err[(Deque.front()-4+bsize)%bsize][0]) / 4;
+						float derr_ipK = abs(b_err[iplusK][0]-b_avgerr);//abs(b_err[iplusK][0]-b_err[(iplusK-4+bsize)%bsize][0]) / 4;
+						float derr_q = abs(b_err[Deque.front()][0]-b_avgerr);//abs(b_err[Deque.front()][0]-b_err[(Deque.front()-4+bsize)%bsize][0]) / 4;
 						Sum = derr_q + derr_ipK;
 						if (pivot1_t != b_err[Deque.front()][1]) {
 							if (Sum > Max) {
@@ -986,7 +986,7 @@ void Raskell::calc_tempo(int mode) {
 						integral += error;
 					float boost = (Kp*error + Ki*integral) / ((float)t - t_passed + 1);
 					tempo += boost;
-					post("pivots %f : %f, count = %d", pivot1_t, pivot2_t, counter);
+					post("pivots %f : %f, Max = %f", pivot1_t, pivot2_t, Max);
 					t_passed = t;
 				}			
 				// slowly grow Min so that it can be reached again
@@ -997,7 +997,8 @@ void Raskell::calc_tempo(int mode) {
 					j++;
 				}
 				if (decr_err && Max < 3.f)*/
-					Max -= abs(error) / 10;
+				if(abs(error) > 3)
+					Max -= abs(error) / 100;
 			}
 			break;
 		case T_ARZT:
@@ -1073,10 +1074,10 @@ void Raskell::increment_t() {
 		} else { // TODO test this!!!
 			post("OUT OF CONTROL");
 			tempo = 1;
-			if (Dist[t%bsize][h%bsize] > Dist[t%bsize][(int)h_real%bsize] * 1.2) {
-				h = h_real;
-				h_mod = h % fsize;
-			} else
+	//		if (Dist[t%bsize][h%bsize] > Dist[t%bsize][(int)h_real%bsize] * 1.2) {
+	//			h = h_real;
+	//			h_mod = h % fsize;
+	//		} else
 				h_real = h;				
 		}
 	}
