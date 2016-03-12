@@ -40,6 +40,7 @@
 #define MID 0.5 //0.5; //1.9; //1.5
 #define SIDE 1
 #define SEN 1 //0.8 // 0.98//1
+#define ELA 1
 
 // compression params
 #define COMP_THRESH -140
@@ -118,8 +119,8 @@ public:
 	bool follow;
 
 	vector<vector<double> > markers;
-	float tempo;
-	double pivot1_t, pivot1_h, pivot2_t, pivot2_h;
+	double tempo, tempotempo, tempo_avg;
+	double pivot1_t, pivot1_h, pivot1_tp, pivot2_t, pivot2_h, pivot2_tp;
 	float integral; // for PID model		
 	deque<double> tempos; // for DEQ_ARZT model
 	int t_passed;
