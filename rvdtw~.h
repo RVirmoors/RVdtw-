@@ -109,8 +109,8 @@ public:
 	t_uint16 params, t, t_mod, h, h_mod, previous, iter;
 	double h_real;
 	vector<vector<t_atom_float> > x, y; 
-	vector<t_uint16> history;
-	vector<vector<double> > b_path, b_err;
+	vector<t_uint16> history, b_path;
+	vector<vector<double> > b_err;
 	vector<vector<double> > Dist, dtw, b_dtw, b_move;
 	deque<t_uint16> Deque;
 	t_uint16 b_start, bh_start;
@@ -122,6 +122,7 @@ public:
 	double tempo, tempotempo, tempo_avg;
 	double pivot1_t, pivot1_h, pivot1_tp, pivot2_t, pivot2_h, pivot2_tp;
 	float integral; // for PID model		
+	deque<double> errors;
 	deque<double> tempos; // for DEQ_ARZT model
 	int t_passed;
 	double last_arzt;
