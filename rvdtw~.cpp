@@ -969,29 +969,29 @@ void Raskell::calc_tempo(int mode) {
 							float derr_i = abs(b_err[(i-40+bsize)%bsize][3] - b_err[(i-41+bsize)%bsize][3]) +
 								abs(b_err[(i-41+bsize)%bsize][3] - b_err[(i-42+bsize)%bsize][3]);
 								//abs(b_err[i][0]-b_avgerr); //abs(b_err[i][0]-b_err[(i-4+bsize)%bsize][0]) / 4;
-							float derr_q = abs(b_err[(Deque.front()-40+bsize)%bsize][3] - 
-												b_err[(Deque.front()-41+bsize)%bsize][3]) + 
-											abs(b_err[(Deque.front()-41+bsize)%bsize][3] - 
-												b_err[(Deque.front()-42+bsize)%bsize][3])	;
+							float derr_q = abs(b_err[(Deque.front())%bsize][3] - 
+												b_err[(Deque.front()-1+bsize)%bsize][3]) + 
+											abs(b_err[(Deque.front()-1+bsize)%bsize][3] - 
+												b_err[(Deque.front()-2+bsize)%bsize][3])	;
 								//abs(b_err[Deque.front()][0]-b_avgerr);//abs(b_err[Deque.front()][0]-b_err[(Deque.front()-4+bsize)%bsize][0]) / 4;
 							while (!Deque.empty() && derr_i < derr_q) {
 								Deque.pop_front();   
 								popped = true;
 							}					
 						}
-						if (popped || Deque.empty()) Deque.push_front(i);
+						if (popped || Deque.empty()) Deque.push_front((i-40+bsize)%bsize);
 					}
 					if (!Deque.empty()) {
-						t_uint16 iplusK = (i-K+bsize)%bsize;
-						float derr_ipK = abs(b_err[(iplusK-40+bsize)%bsize][3] - 
-												b_err[(iplusK-41+bsize)%bsize][3]) +
-											abs(b_err[(iplusK-41+bsize)%bsize][3] - 
-												b_err[(iplusK-42+bsize)%bsize][3]);
+						t_uint16 iplusK = (i-40-K+bsize)%bsize;
+						float derr_ipK = abs(b_err[(iplusK)%bsize][3] - 
+												b_err[(iplusK-1+bsize)%bsize][3]) +
+											abs(b_err[(iplusK-1+bsize)%bsize][3] - 
+												b_err[(iplusK-2+bsize)%bsize][3]);
 							//abs(b_err[iplusK][0]-b_avgerr);//abs(b_err[iplusK][0]-b_err[(iplusK-4+bsize)%bsize][0]) / 4;
-						float derr_q = abs(b_err[(Deque.front()-40+bsize)%bsize][3] - 
-												b_err[(Deque.front()-41+bsize)%bsize][3]) +
-										abs(b_err[(Deque.front()-41+bsize)%bsize][3] - 
-												b_err[(Deque.front()-42+bsize)%bsize][3]);
+						float derr_q = abs(b_err[(Deque.front())%bsize][3] - 
+												b_err[(Deque.front()-1+bsize)%bsize][3]) +
+										abs(b_err[(Deque.front()-1+bsize)%bsize][3] - 
+												b_err[(Deque.front()-2+bsize)%bsize][3]);
 							//abs(b_err[Deque.front()][0]-b_avgerr);//abs(b_err[Deque.front()][0]-b_err[(Deque.front()-4+bsize)%bsize][0]) / 4;
 						Sum = derr_q + derr_ipK;
 						if (Sum <= Min) {
@@ -1097,7 +1097,7 @@ void Raskell::increment_t() {
 	static short calc = 0; //bool
 	// sensitivity to tempo fluctuations:
 	if (abs(error) > pow(1.f-sensitivity, 2)*100.f) {
-		calc_tempo(T_ARZT);	
+		calc_tempo(T_DEQ);	
 		calc = 1;
 	}		
 	else if (abs(error) <= 1 && calc && t > 40) {
