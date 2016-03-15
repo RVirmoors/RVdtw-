@@ -903,7 +903,6 @@ void Raskell::calc_tempo(int mode) {
 	// for DEQ model
 	static double old_tempo = 1;
 	static double Min = VERY_BIG, Sum;
-	static int span = 1;
 	bool new_tempo = false;
 	int K = second, L = second / 2;
 	t_uint16 counter = 0;
@@ -953,7 +952,7 @@ void Raskell::calc_tempo(int mode) {
 		case T_DEQ:
 			// get tempo pivots from history via deque: http://www.infoarena.ro/deque-si-aplicatii
 			// first pivot is within L steps from path origin
-			// 2nd pivot is at least K steps away from 1st, AND minimizes SUM(tempo[pivots])
+			// 2nd pivot is at least K steps away from 1st, AND minimizes SUM(var_tempo[pivots])
 			if (t < bsize || h < bsize)
 				tempo = 1;// history[t] - history[t-1]; // not yet active
 			else {				
@@ -1023,17 +1022,17 @@ void Raskell::calc_tempo(int mode) {
 				if (new_tempo && pivot1_t != pivot2_t) {
 					// compute new tempo, avoiding divide by 0
 					old_tempo = tempo = (pivot1_h - pivot2_h) / (pivot1_t - pivot2_t);
-					tempotempo = (pivot1_tp - pivot2_tp) / (pivot1_t - pivot2_t);
-					t_passed = pivot1_t; span = pivot1_t - pivot2_t;
+					tempotempo = (pivot1_tp - pivot2_tp);
+					t_passed = pivot1_t;
 					post("pivots %f : %f, m=%f tt=%f", pivot1_t, pivot2_t, Min, tempotempo);					
 				} 		
 				// PID
 				if (error > 2) {
-					post("+ %f", abs(tempotempo)*span + 0.0001);
-					tempo += abs(tempotempo)*span + 0.0001;
+					post("+ %f", abs(tempotempo) + 0.0001);
+					tempo += abs(tempotempo) + 0.0001;
 				} else if (error < -2) {
-					post("- %f", abs(tempotempo)*span + 0.0001);
-					tempo -= abs(tempotempo)*span + 0.0001;
+					post("- %f", abs(tempotempo) + 0.0001);
+					tempo -= abs(tempotempo) + 0.0001;
 				}	
 				
 				// slowly grow Min so that it can be reached again
