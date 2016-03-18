@@ -943,7 +943,7 @@ void Raskell::calc_tempo(int mode) {
 					// PI tempo model					
 					tempo = (double)(history[t] - history[t - (second/2)]) / (second/2);
 					float derivate = (error - errors[0]) / (second/2);
-					post("err = %f // int = %f // der = %f", Kp*error, Ki*integral, Kd*derivate);
+					//post("err = %f // int = %f // der = %f", Kp*error, Ki*integral, Kd*derivate);
 					double boost = (Kp*error + Ki*integral + Kd * derivate) / ((double)(second/2));
 					tempo += boost;
 				}
@@ -1024,20 +1024,20 @@ void Raskell::calc_tempo(int mode) {
 					old_tempo = tempo = (pivot1_h - pivot2_h) / (pivot1_t - pivot2_t);
 					tempotempo = (pivot1_tp - pivot2_tp);
 					t_passed = pivot1_t;
-					post("pivots %f : %f, m=%f tt=%f", pivot1_t, pivot2_t, Min, tempotempo);					
+					//post("pivots %f : %f, Min=%f tt=%f", pivot1_t, pivot2_t, Min, tempotempo);					
 				} 		
 				// PID
 				if (error > 2) {
-					post("+ %f", abs(tempotempo) + 0.0001);
+					//post("+ %f", abs(tempotempo) + 0.0001);
 					tempo += abs(tempotempo) + 0.0001;
 				} else if (error < -2) {
-					post("- %f", abs(tempotempo) + 0.0001);
+					//post("- %f", abs(tempotempo) + 0.0001);
 					tempo -= abs(tempotempo) + 0.0001;
 				}	
 				
 				// slowly grow Min so that it can be reached again
-				if(abs(old_tempo - tempo) > Min)
-					Min = abs(old_tempo - tempo);
+				//if(abs(old_tempo - tempo) > Min)
+				//	Min = abs(old_tempo - tempo);
 			}
 			break;
 		case T_ARZT:
@@ -1062,7 +1062,7 @@ void Raskell::calc_tempo(int mode) {
 				}
 				if (new_tempo) {
 					tempos.push_back(last_arzt);
-					post("Added tempo %f, total %d tempos, t = %d", last_arzt, tempos.size(), t);
+					//post("Added tempo %f, total %d tempos, t = %d", last_arzt, tempos.size(), t);
 					if (tempos.size() == 6)
 						tempos.pop_front();
 					if (tempos.size() > 3) {
@@ -1072,7 +1072,7 @@ void Raskell::calc_tempo(int mode) {
 							i++;
 						}						
 						tempo /= (tempos.size() * (tempos.size()+1) / 2); // sum of 1..n							
-						post("mean = %f", tempo);
+						//post("mean = %f", tempo);
 						old_tempo = tempo;
 						t_passed = t;
 					}
@@ -1134,8 +1134,8 @@ void Raskell::increment_h() {
 	if (h == markers[m_iter][M_SCORED]) {
 		markers[m_iter][M_LIVE] = t; // marker detected at time "t"
 		//markers[m_iter][M_HOOK] = dtw_certainty;
-		//markers[m_iter][M_CERT] = cur_dtw - prev_dtw;
-		post("marker detected at t = %i, h = %i", t, h);
+		markers[m_iter][M_ACC] = h_real;
+		post("marker detected at t = %i, h = %i, h_real = %f", t, h, h_real);
 		atom_setsym(dump, gensym("marker"));
 		atom_setlong(dump+1, m_iter);
 		outlet_list(max->out_dump, 0L, 2, dump);
@@ -1397,7 +1397,7 @@ void Raskell::do_write(t_symbol *s) {
 			to_string((long long)MAX_RUN) + ", " + 
 			to_string((long long)COMP_THRESH);		
 		buf+="\nMarker Trace Results for," + score_name + ", vs, " + live_name;
-		buf+="\nID, Score pos, Certainty, c2, Live ideal, Live detected";
+		buf+="\nID, Score pos, Certainty, Live accomp, Live ideal, Live detected";
 		for (i = 0; i <= m_count; i++) {
 			buf += "\n" + to_string(i);
 			for (j = 0; j < 5; j++)

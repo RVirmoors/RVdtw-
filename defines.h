@@ -18,7 +18,7 @@
 // marker matrix:
 #define M_SCORED 0
 #define M_HOOK 1
-#define M_CERT 2
+#define M_ACC 2
 #define M_IDEAL 3
 #define M_LIVE 4
 
