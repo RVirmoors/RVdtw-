@@ -1132,6 +1132,7 @@ void Raskell::increment_h() {
 	h_mod = (h_mod+1)%fsize;
 
 	if (h == markers[m_iter][M_SCORED]) {
+	//if (h_real >= markers[m_iter][M_SCORED]) {
 		markers[m_iter][M_LIVE] = t; // marker detected at time "t"
 		//markers[m_iter][M_HOOK] = dtw_certainty;
 		markers[m_iter][M_ACC] = h_real;
