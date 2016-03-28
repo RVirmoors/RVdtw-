@@ -247,13 +247,15 @@ Raskell::Raskell() {
 		SampleRate = sys_getsr();
 		active_frames = WINDOW_SIZE / HOP_SIZE;
 
-		gist = new Gist<double>(WINDOW_SIZE,SampleRate); // 64 for max 6+
+		gist = new Gist<double>(WINDOW_SIZE,SampleRate); 
 		//(*gist).mfcc.setNumCoefficients(m);
+		chroma = new Chromagram(WINDOW_SIZE,SampleRate); 
+		//(*chroma).setChromaCalculationInterval(WINDOW_SIZE);
 
 		l_buffer_reference = NULL;
 		score_name = live_name = "";
 
-		features = GIST_MFCCS;
+		features = CHROMA;
 						
 		if (features == MFCCS) {			
 			params = 40; // # of feats to be used
@@ -270,6 +272,7 @@ Raskell::Raskell() {
 			tfeat = fftw_alloc_real(m);
 		} else if (features == CHROMA) {
 			params = m = 12;
+			tfeat = fftw_alloc_real(m);
 		}
 		dspinit();
 
@@ -311,7 +314,7 @@ void Raskell::init(t_symbol *s,  long argc, t_atom *argv) {
 void Raskell::perform(double *in, long sampleframes) {
 	
 	if ((h <= ysize) && (iter < ysize) && in[0]) { //&&notzero(ins, sampleframes	
-		std::vector<double> mfcc;
+		std::vector<double> mfcc, chr;
 		static int samples_read = 0;
 		t_uint32 i, j;
 		for (i=0; i < sampleframes; i++) {
@@ -327,7 +330,8 @@ void Raskell::perform(double *in, long sampleframes) {
 						// if signal is loud enough, then compress the first MFCC coefficient (loudness)
 						if (tfeat[0] > COMP_THRESH) 
 							tfeat[0] = compress(tfeat[0], true);//tfeat[0] /= 8;
-						else tfeat[0] = compress(tfeat[0], false);
+						else tfeat[0] = compress(tfeat[0], false);						
+						feats(params);
 						break;
 					case (GIST_MFCCS) :								
 						(*gist).processAudioFrame(frame[i]);
@@ -336,6 +340,11 @@ void Raskell::perform(double *in, long sampleframes) {
 						tfeat[0] = 0.1; // ignore first MFCC coeff (loudness)
 						break;
 					case (CHROMA) :
+						(*chroma).processAudioFrame(frame[i]);
+						if ((*chroma).isReady()) {
+							chr = (*chroma).getChromagram();						
+							tfeat = &chr[0];
+						}
 						break;
 				}
 				feats(params);

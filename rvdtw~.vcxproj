@@ -93,7 +93,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <TargetExt>.mxe</TargetExt>
-    <IncludePath>$(ProjectDir)\fftw\32;$(ProjectDir)\Gist\src;$(ProjectDir);$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)\fftw\32;$(ProjectDir)\Chroma\src;$(ProjectDir)\Gist\src;$(ProjectDir);$(IncludePath)</IncludePath>
     <OutDir>$(C74SUPPORT)..\sdk-build\</OutDir>
     <SourcePath>$(VCInstallDir)atlmfc\src\mfc;$(VCInstallDir)atlmfc\src\mfcm;$(VCInstallDir)atlmfc\src\atl;$(VCInstallDir)crt\src</SourcePath>
   </PropertyGroup>
@@ -191,7 +191,8 @@
       <OmitFramePointers>true</OmitFramePointers>
       <WholeProgramOptimization>true</WholeProgramOptimization>
       <AdditionalIncludeDirectories>$(C74SUPPORT)\max-includes;$(C74SUPPORT)\msp-includes;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN_VERSION;WIN32;NDEBUG;_WINDOWS;_USRDLL;WIN_EXT_VERSION;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>USE_FFTW;WIN_VERSION;WIN32;NDEBUG;_WINDOWS;_USRDLL;WIN_EXT_VERSION;
+;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <ExceptionHandling />
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -276,6 +277,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="$(C74SUPPORT)\max-includes\common\dllmain_win.c" />
+    <ClCompile Include="chroma\src\ChordDetector.cpp" />
+    <ClCompile Include="chroma\src\Chromagram.cpp" />
     <ClCompile Include="Gist\src\core\CoreFrequencyDomainFeatures.cpp" />
     <ClCompile Include="Gist\src\core\CoreTimeDomainFeatures.cpp" />
     <ClCompile Include="Gist\src\mfcc\MFCC.cpp" />

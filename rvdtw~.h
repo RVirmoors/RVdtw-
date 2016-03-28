@@ -14,9 +14,10 @@
 #include "ext_buffer.h"		// MSP buffer
 #include "defines.h"		// int defines
 
-#define USE_FFTW 
+//#define USE_FFTW	// preprocessor define!
 #include <fftw3.h>
 #include "gist.h"
+#include "chromagram.h"
 
 #include <algorithm>
 #include <cstdio>
@@ -147,6 +148,7 @@ public:
 	fftw_complex *out;
     fftw_plan plan, dct;
 	Gist<double> *gist;
+	Chromagram *chroma;
 
 	//		file handling vars:
 	t_filehandle f_fh;			

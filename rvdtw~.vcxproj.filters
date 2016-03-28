@@ -18,6 +18,12 @@
     <ClCompile Include="Gist\src\pitch\Yin.cpp">
       <Filter>Gist</Filter>
     </ClCompile>
+    <ClCompile Include="chroma\src\ChordDetector.cpp">
+      <Filter>Chroma</Filter>
+    </ClCompile>
+    <ClCompile Include="chroma\src\Chromagram.cpp">
+      <Filter>Chroma</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="defines.h" />
@@ -26,6 +32,9 @@
   <ItemGroup>
     <Filter Include="Gist">
       <UniqueIdentifier>{3f620367-a431-4b0e-85fd-95e8dd0c17f5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Chroma">
+      <UniqueIdentifier>{f61d625b-cc35-4bc5-ab20-6f11ab8f3579}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>
