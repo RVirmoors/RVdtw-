@@ -223,6 +223,7 @@ void RVdtw_perform64(t_RVdtw *x, t_object *dsp64, double **ins, long numins, dou
 
 } // end extern C
 
+		
 
 Raskell::Raskell() {	
 		ysize = t = h = h_real = runCount = iter = m_iter = m_ideal_iter = t_mod = h_mod = 0; // current position for online DTW: (t,h)
@@ -242,31 +243,41 @@ Raskell::Raskell() {
 		bot_weight = SIDE;
 
 		maxRunCount = MAX_RUN; // tempo between 1/x and x
-		params = 40; // ysize; // # of feats at input
 
 		SampleRate = sys_getsr();
 		active_frames = WINDOW_SIZE / HOP_SIZE;
-		// number of frames that will be computed at any one time
-		m = 48; // number of Mel filterbanks
 
-		dspinit();
+		gist = new Gist<double>(WINDOW_SIZE,SampleRate); // 64 for max 6+
+		//(*gist).mfcc.setNumCoefficients(m);
+
 		l_buffer_reference = NULL;
 		score_name = live_name = "";
+
+		features = GIST_MFCCS;
 						
-		in = fftw_alloc_real(WINDOW_SIZE);
-		logEnergy = fftw_alloc_real(m);		// 48 filter banks
-		feat_frame = (t_atom*)sysmem_newptrclear(params * sizeof(t_atom_float));
-		out = fftw_alloc_complex(WINDOW_SIZE/2 + 1);
-		tfeat = fftw_alloc_real(m);
-        plan = fftw_plan_dft_r2c_1d(WINDOW_SIZE, in, out, FFTW_MEASURE); // FFT real to complex FFTW_MEASURE 
-		dct = fftw_plan_r2r_1d(m, logEnergy, tfeat, FFTW_REDFT10, NULL);
+		if (features == MFCCS) {			
+			params = 40; // # of feats to be used
+			// number of frames that will be computed at any one time:
+			m = 48; // number of Mel filterbanks
+			in = fftw_alloc_real(WINDOW_SIZE);
+			logEnergy = fftw_alloc_real(m);		// 48 filter banks
+			out = fftw_alloc_complex(WINDOW_SIZE/2 + 1);
+			tfeat = fftw_alloc_real(m);
+			plan = fftw_plan_dft_r2c_1d(WINDOW_SIZE, in, out, FFTW_MEASURE); // FFT real to complex FFTW_MEASURE 
+			dct = fftw_plan_r2r_1d(m, logEnergy, tfeat, FFTW_REDFT10, NULL);
+		} else if (features == GIST_MFCCS) {
+			params = m = 13;
+			tfeat = fftw_alloc_real(m);
+		} else if (features == CHROMA) {
+			params = m = 12;
+		}
+		dspinit();
 
 		post ("RV object created");
 }
 
 
 Raskell::~Raskell() {
-		sysmem_freeptr(feat_frame);
 		fftw_destroy_plan(plan);
         fftw_free(in); fftw_free(out);
 		fftw_free(logEnergy);
@@ -298,20 +309,35 @@ void Raskell::init(t_symbol *s,  long argc, t_atom *argv) {
 }
 
 void Raskell::perform(double *in, long sampleframes) {
-	if ((h <= ysize) && (iter < ysize) && in[0]) { //&&notzero(ins, sampleframes
+	
+	if ((h <= ysize) && (iter < ysize) && in[0]) { //&&notzero(ins, sampleframes	
+		std::vector<double> mfcc;
+		static int samples_read = 0;
 		t_uint32 i, j;
 		for (i=0; i < sampleframes; i++) {
 			add_sample_to_frames(in[i]);
 		}
 		for(i=0; i<active_frames; i++) {
-			if(frame_index[i]==0) {		// if frame is full, then compute
-				for(j=0; j<WINDOW_SIZE; j++)
-					frame[i][j] *= window[j]; // apply hamming window
-				calc_mfcc(i); // get tfeat[]
-				// if signal is loud enough, then compress the first MFCC coefficient (loudness)
-				if (tfeat[0] > COMP_THRESH) 
-					tfeat[0] = compress(tfeat[0], true);//tfeat[0] /= 8;
-				else tfeat[0] = compress(tfeat[0], false);
+			if(frame_index[i]==0) {		// if frame is full, then compute feature vector
+				switch (features) {
+					case (MFCCS) :	
+						for(j=0; j<WINDOW_SIZE; j++)
+							frame[i][j] *= window[j]; // apply hamming window
+						calc_mfcc(i); // get tfeat[]
+						// if signal is loud enough, then compress the first MFCC coefficient (loudness)
+						if (tfeat[0] > COMP_THRESH) 
+							tfeat[0] = compress(tfeat[0], true);//tfeat[0] /= 8;
+						else tfeat[0] = compress(tfeat[0], false);
+						break;
+					case (GIST_MFCCS) :								
+						(*gist).processAudioFrame(frame[i]);
+						mfcc = (*gist).melFrequencyCepstralCoefficients();
+						tfeat = &mfcc[0];		
+						tfeat[0] = 0.1; // ignore first MFCC coeff (loudness)
+						break;
+					case (CHROMA) :
+						break;
+				}
 				feats(params);
 			}
 		}
@@ -595,7 +621,7 @@ void Raskell::calc_mfcc(t_uint16 frame_to_fft) {
 		logEnergy[i] = log10(logEnergy[i]);
 	}
 	//take DCT
-	fftw_execute(dct);
+	fftw_execute(dct);	
 }
 
 // ========================= DTW ============================
@@ -1283,18 +1309,24 @@ bool Raskell::read_line() {
 			for (i=0; i<ysize; i++) {
 				y[i].resize(params);
 			}
-			feat_frame = (t_atom*)sysmem_resizeptr(feat_frame, params * sizeof(t_atom_float));
 		}
 
 		for(t_uint16 i=0; i<params; i++) 
-			//atom_setfloat(feat_frame+i-1, f_feat[i]); // f_feat[0] = order no.
+			// f_feat[0] = order no.
 			tfeat[i] = f_feat[i+1];
-		// if signal is loud enough, then compress the first feat coefficient (loudness)
-		if (tfeat[0] > COMP_THRESH) 
-			tfeat[0] = compress(tfeat[0], true);//tfeat[0] /= 8;
-		else tfeat[0] = compress(tfeat[0], false);
-		//post("min is %.2f", min0);
-		//tfeat[0]=0.1;
+		
+		switch (features) {
+		case (MFCCS) :
+			// if signal is loud enough, then compress the first feat coefficient (loudness)
+			if (tfeat[0] > COMP_THRESH) 
+				tfeat[0] = compress(tfeat[0], true);//tfeat[0] /= 8;
+			else tfeat[0] = compress(tfeat[0], false);
+			break;
+		case (GIST_MFCCS) :
+			tfeat[0] = 0.1;
+			break;
+		}
+
 		feats(params); 
 		if(strstr(buf, "marker"))//-buf==0) // marker
 			marker(NULL);
@@ -1316,7 +1348,7 @@ double Raskell::compress(double value, bool active) {
 				float ratio = timer * COMP_RATIO;
 				value = (value - COMP_THRESH) / ratio;
 				timer++;
-				//post("RELEASING %i value: %.2f", timer, value);
+//				post("RELEASING %i value: %.2f", timer, value);
 			}		
 		}
 	}
@@ -1463,9 +1495,6 @@ void Raskell::set_buffer(t_symbol *s) {
 			iter = 1;
 			marker(NULL); // add marker at start (position 1)
 		}
-			
-
-		int sampleframes = 64;
 
 		float* sample = buffer_locksamples(b);
 		
@@ -1476,5 +1505,4 @@ void Raskell::set_buffer(t_symbol *s) {
 			}
 		buffer_unlocksamples(b);
 	}
-
 }

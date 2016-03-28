@@ -31,3 +31,8 @@
 #define Kd 0.4 //2.5
 #define T_DEQ 3
 #define T_ARZT 4
+
+// audio features
+#define MFCCS 0
+#define GIST_MFCCS 1
+#define CHROMA 2

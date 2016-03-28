@@ -14,7 +14,10 @@
 #include "ext_buffer.h"		// MSP buffer
 #include "defines.h"		// int defines
 
+#define USE_FFTW 
 #include <fftw3.h>
+#include "gist.h"
+
 #include <algorithm>
 #include <cstdio>
 #include <cstdlib>
@@ -28,6 +31,7 @@
 #define bsize 512//128 // backwards DTW win length; should be larger than fsize
 #define WINDOW_SIZE 2048
 #define HOP_SIZE 512
+
 
 #define CLASSIC 0
 
@@ -117,6 +121,7 @@ public:
 	double b_avgerr;
 	float mid_weight, top_weight, bot_weight;
 	bool follow;
+	int features; // MFCCs or chroma vectors
 
 	vector<vector<double> > markers;
 	double tempo, tempotempo, tempo_avg;
@@ -138,10 +143,10 @@ public:
 	vector<vector<double> > frame, banks;
 	double *in, *logEnergy, *tfeat;
 	vector<double> window;
-	int m;
-	t_atom *feat_frame;
+	int m; // Mel filterbanks
 	fftw_complex *out;
     fftw_plan plan, dct;
+	Gist<double> *gist;
 
 	//		file handling vars:
 	t_filehandle f_fh;			
