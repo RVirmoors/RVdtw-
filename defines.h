@@ -34,5 +34,5 @@
 
 // audio features
 #define MFCCS 0
-#define GIST_MFCCS 1
-#define CHROMA 2
+//#define GIST_MFCCS 1
+#define CHROMA 1

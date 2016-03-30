@@ -247,10 +247,10 @@ Raskell::Raskell() {
 		SampleRate = sys_getsr();
 		active_frames = WINDOW_SIZE / HOP_SIZE;
 
-		gist = new Gist<double>(WINDOW_SIZE,SampleRate); 
+		//gist = new Gist<double>(WINDOW_SIZE,SampleRate); 
 		//(*gist).mfcc.setNumCoefficients(m);
 		chroma = new Chromagram(WINDOW_SIZE,SampleRate); 
-		//(*chroma).setChromaCalculationInterval(WINDOW_SIZE);
+		(*chroma).setChromaCalculationInterval(WINDOW_SIZE);
 
 		l_buffer_reference = NULL;
 		score_name = live_name = "";
@@ -267,9 +267,6 @@ Raskell::Raskell() {
 			tfeat = fftw_alloc_real(m);
 			plan = fftw_plan_dft_r2c_1d(WINDOW_SIZE, in, out, FFTW_MEASURE); // FFT real to complex FFTW_MEASURE 
 			dct = fftw_plan_r2r_1d(m, logEnergy, tfeat, FFTW_REDFT10, NULL);
-		} else if (features == GIST_MFCCS) {
-			params = m = 13;
-			tfeat = fftw_alloc_real(m);
 		} else if (features == CHROMA) {
 			params = m = 12;
 			tfeat = fftw_alloc_real(m);
@@ -332,13 +329,7 @@ void Raskell::perform(double *in, long sampleframes) {
 							tfeat[0] = compress(tfeat[0], true);//tfeat[0] /= 8;
 						else tfeat[0] = compress(tfeat[0], false);						
 						feats(params);
-						break;
-					case (GIST_MFCCS) :								
-						(*gist).processAudioFrame(frame[i]);
-						mfcc = (*gist).melFrequencyCepstralCoefficients();
-						tfeat = &mfcc[0];		
-						tfeat[0] = 0.1; // ignore first MFCC coeff (loudness)
-						break;
+						break;					
 					case (CHROMA) :
 						(*chroma).processAudioFrame(frame[i]);
 						if ((*chroma).isReady()) {
@@ -1330,9 +1321,6 @@ bool Raskell::read_line() {
 			if (tfeat[0] > COMP_THRESH) 
 				tfeat[0] = compress(tfeat[0], true);//tfeat[0] /= 8;
 			else tfeat[0] = compress(tfeat[0], false);
-			break;
-		case (GIST_MFCCS) :
-			tfeat[0] = 0.1;
 			break;
 		}
 

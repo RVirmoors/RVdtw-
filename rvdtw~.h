@@ -16,7 +16,7 @@
 
 //#define USE_FFTW	// preprocessor define!
 #include <fftw3.h>
-#include "gist.h"
+//#include "gist.h"
 #include "chromagram.h"
 
 #include <algorithm>
@@ -147,7 +147,7 @@ public:
 	int m; // Mel filterbanks
 	fftw_complex *out;
     fftw_plan plan, dct;
-	Gist<double> *gist;
+	//Gist<double> *gist;
 	Chromagram *chroma;
 
 	//		file handling vars:
