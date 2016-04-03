@@ -90,6 +90,7 @@ extern "C" {
 	void RVdtw_stop(t_RVdtw *x, t_symbol *s);
 	void RVdtw_follow(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv);
 	void RVdtw_sensitivity(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv);
+	void RVdtw_elasticity(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv);
 
 	void RVdtw_dblclick(t_RVdtw *x);
 	t_max_err RVdtw_notify(t_RVdtw *x, t_symbol *s, t_symbol *msg, void *sender, void *data);
@@ -134,6 +135,7 @@ public:
 	int t_passed;
 	double last_arzt;
 	float sensitivity; // tempo fluctuations
+	float elasticity; // tempo response amp.
 
 	t_uint16 runCount, maxRunCount, m_iter, m_ideal_iter, m_count, input_sel;
 	t_atom dump[50];

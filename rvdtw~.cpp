@@ -24,6 +24,7 @@ int C74_EXPORT main(void) {
 	class_addmethod(c, (method)RVdtw_stop,		"stop",		A_GIMME, 0);
 	class_addmethod(c, (method)RVdtw_follow,	"follow",		A_GIMME, 0);	
 	class_addmethod(c, (method)RVdtw_sensitivity,	"sensitivity",	A_GIMME, 0);
+	class_addmethod(c, (method)RVdtw_elasticity,	"elasticity",	A_GIMME, 0);
 
 	class_addmethod(c, (method)RVdtw_dblclick,	"dblclick",	A_CANT, 0);	
 	class_addmethod(c, (method)RVdtw_notify,	"notify",	A_CANT, 0);
@@ -160,6 +161,11 @@ void RVdtw_sensitivity(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv) {
 	post("Sensitivity to tempo fluctuations is %f", x->rv->sensitivity);
 }
 
+void RVdtw_elasticity(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv) {
+	x->rv->elasticity = atom_getfloat(argv);
+	post("Elasticity of tempo model is %f", x->rv->elasticity);
+}
+
 // this lets us double-click to open up the buffer~ it references
 void RVdtw_dblclick(t_RVdtw *x) {
 	buffer_view(buffer_ref_getobject(x->rv->l_buffer_reference));
@@ -237,6 +243,7 @@ Raskell::Raskell() {
 		input_sel = IN_SCORE; // 1 = SCORE; 2 = LIVE; 0 = closed		
 		follow = TRUE;
 		sensitivity = SEN; // sens. to tempo fluctuations
+		elasticity = ELA;
 		integral = t_passed = last_arzt = 0;	
 		tempos.clear(); errors.clear();
 
@@ -1124,6 +1131,7 @@ void Raskell::calc_tempo(int mode) {
 			}
 			break;
 	}
+	tempo *= elasticity;
 }
 
 void Raskell::increment_t() {
