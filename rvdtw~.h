@@ -5,8 +5,7 @@
 #define RV_VERSION 0.2
 // TO DO: read in chunks
 // TO DO: goto h
-// TO DO: dtw_certainty = difference between b_dtw and history
-// TO DO: maybe certainty = small with small or very large dist() (plateaus / lost)
+// TO DO: make separate classes for DTW and TEMPO MODELS
 
 #include "ext.h"			// standard Max include, always required (except in Jitter)
 #include "ext_obex.h"		// required for "new" style objects
@@ -18,6 +17,7 @@
 #include <fftw3.h>
 //#include "gist.h"
 #include "chromagram.h"
+#include "BTrack.h"
 
 #include <algorithm>
 #include <cstdio>
@@ -126,6 +126,7 @@ public:
 
 	vector<vector<double> > markers;
 	double tempo, tempotempo, tempo_avg;
+	int tempo_model;
 	double pivot1_t, pivot1_h, pivot1_tp, pivot2_t, pivot2_h, pivot2_tp;
 	float integral; // for PID model		
 	deque<double> errors;
@@ -148,6 +149,7 @@ public:
 	fftw_complex *out;
     fftw_plan plan, dct;
 	//Gist<double> *gist;
+	BTrack *beat;
 	Chromagram *chroma;
 
 	//		file handling vars:

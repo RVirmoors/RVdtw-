@@ -1,4 +1,15 @@
 #################
+## Libraries used
+#################
+
+BTrack/
+Chroma/
+fftw/
+Gist/
+libsamplerate/
+
+
+#################
 ## Eclipse
 #################
 

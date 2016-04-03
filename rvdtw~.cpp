@@ -182,6 +182,7 @@ t_max_err RVdtw_notify(t_RVdtw *x, t_symbol *s, t_symbol *msg, void *sender, voi
 void RVdtw_dsp(t_RVdtw *x, t_signal **sp, short *count)
 {
 	//post("my sample rate is: %f", sp[0]->s_sr);
+	x->rv->beat->updateHopAndFrameSize(sp[0]->s_n, sp[0]->s_n*2);
 	dsp_add(RVdtw_perform, 3, x, sp[0]->s_vec, sp[0]->s_n); // ins & sampleframes
 }
 
@@ -191,6 +192,7 @@ void RVdtw_dsp(t_RVdtw *x, t_signal **sp, short *count)
 void RVdtw_dsp64(t_RVdtw *x, t_object *dsp64, short *count, double samplerate, long maxvectorsize, long flags)
 {
 	//post("my sample rate is: %f", samplerate);
+	x->rv->beat->updateHopAndFrameSize(maxvectorsize, maxvectorsize*2);
 	object_method(dsp64, gensym("dsp_add64"), x, RVdtw_perform64, 0, NULL);
 }
 
@@ -249,6 +251,7 @@ Raskell::Raskell() {
 
 		//gist = new Gist<double>(WINDOW_SIZE,SampleRate); 
 		//(*gist).mfcc.setNumCoefficients(m);
+		beat = new BTrack();
 		chroma = new Chromagram(WINDOW_SIZE,SampleRate); 
 		(*chroma).setChromaCalculationInterval(WINDOW_SIZE);
 
@@ -256,6 +259,7 @@ Raskell::Raskell() {
 		score_name = live_name = "";
 
 		features = CHROMA;
+		tempo_model = T_DEQ;
 						
 		if (features == MFCCS) {			
 			params = 40; // # of feats to be used
@@ -309,6 +313,11 @@ void Raskell::init(t_symbol *s,  long argc, t_atom *argv) {
 }
 
 void Raskell::perform(double *in, long sampleframes) {
+
+	//float sd = (*gist).spectralDifference();
+	beat->processAudioFrame(in);
+	if(beat->beatDueInCurrentFrame())
+		post("beat! t= %f", beat->getCurrentTempoEstimate());
 	
 	if ((h <= ysize) && (iter < ysize) && in[0]) { //&&notzero(ins, sampleframes	
 		std::vector<double> mfcc, chr;
@@ -1122,7 +1131,7 @@ void Raskell::increment_t() {
 	static short calc = 0; //bool
 	// sensitivity to tempo fluctuations:
 	if (abs(error) > pow(1.f-sensitivity, 2)*100.f) {
-		calc_tempo(T_DEQ);	
+		calc_tempo(tempo_model);	
 		calc = 1;
 	}		
 	else if (abs(error) <= 1 && calc && t > 40) {
