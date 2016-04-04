@@ -112,7 +112,7 @@ void RVdtw_read(t_RVdtw *x, t_symbol *s) {
 
 void RVdtw_do_read(t_RVdtw *x, t_symbol *s) {
 	if (!x->rv->do_read(s))
-		x->rv->set_buffer(s);
+		x->rv->set_buffer(s, B_SCORE);
 }
 
 void RVdtw_read_line(t_RVdtw *x, t_symbol *s) {
@@ -179,8 +179,8 @@ void RVdtw_dblclick(t_RVdtw *x) {
 // this handles notifications when the buffer appears, disappears, or is modified.
 t_max_err RVdtw_notify(t_RVdtw *x, t_symbol *s, t_symbol *msg, void *sender, void *data)
 {
-	if (msg == x->rv->ps_buffer_modified)
-		x->rv->set_buffer(x->rv->buf_name);
+	if (msg == x->rv->ps_buffer_modified && x->rv->input_sel == IN_SCORE)
+		x->rv->set_buffer(x->rv->buf_name, B_SCORE);
 	return buffer_ref_notify(x->rv->l_buffer_reference, s, msg, sender, data);
 }
 
@@ -318,7 +318,7 @@ void Raskell::init(t_symbol *s,  long argc, t_atom *argv) {
 		
 		if (argc) {
 			if(!do_read(buf_name))
-				set_buffer(buf_name); // first argument
+				set_buffer(buf_name, B_SCORE); // first argument
 		}
 		else post("no score preloaded");
 
@@ -1484,7 +1484,7 @@ void Raskell::do_write(t_symbol *s) {
 
 // ====================
 
-void Raskell::set_buffer(t_symbol *s) {
+void Raskell::set_buffer(t_symbol *s, int dest) {
 
 	if (!l_buffer_reference)
 		l_buffer_reference = buffer_ref_new((t_object*)max, s);

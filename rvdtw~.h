@@ -211,7 +211,7 @@ public:
 	t_symbol *ps_buffer_modified;	
 	t_symbol *buf_name;
 	t_buffer_ref *l_buffer_reference;
-	void set_buffer(t_symbol *s);
+	void set_buffer(t_symbol *s, int dest);
 };
 /*
 // ===== helper functions =====
