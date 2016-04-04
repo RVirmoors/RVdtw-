@@ -38,5 +38,5 @@
 #define CHROMA 1
 
 // buffer destination
-#define B_SCORE 0
-#define B_BEAT 1
+#define B_SCORE 1
+#define B_BEAT 2
