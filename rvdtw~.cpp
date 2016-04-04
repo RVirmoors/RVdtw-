@@ -203,6 +203,7 @@ void RVdtw_dsp(t_RVdtw *x, t_signal **sp, short *count)
 void RVdtw_dsp64(t_RVdtw *x, t_object *dsp64, short *count, double samplerate, long maxvectorsize, long flags)
 {
 	//post("my sample rate is: %f", samplerate);
+	x->rv->hop = maxvectorsize;
 	x->rv->beat->updateHopAndFrameSize(maxvectorsize, maxvectorsize*2);
 	object_method(dsp64, gensym("dsp_add64"), x, RVdtw_perform64, 0, NULL);
 }
@@ -260,6 +261,7 @@ Raskell::Raskell() {
 
 		SampleRate = sys_getsr();
 		active_frames = WINDOW_SIZE / HOP_SIZE;
+		hop = HOP_SIZE;
 
 		//gist = new Gist<double>(WINDOW_SIZE,SampleRate); 
 		//(*gist).mfcc.setNumCoefficients(m);
@@ -1505,7 +1507,7 @@ void Raskell::set_buffer(t_symbol *s, int dest) {
 		}
 		long frames = buffer_getframecount(b);
 		post("Buffer is %d samples long", frames);
-		if (input_sel == IN_SCORE) {// make new score
+		if (dest == B_SCORE && input_sel == IN_SCORE) {// make new score
 			score_size((long)(frames / HOP_SIZE - active_frames + 1));
 			iter = 1;
 			marker(NULL); // add marker at start (position 1)
@@ -1514,9 +1516,9 @@ void Raskell::set_buffer(t_symbol *s, int dest) {
 		float* sample = buffer_locksamples(b);
 		
 		if (sample)
-			for (long i = 0; i < frames; i++) {
-				double samp = sample[i];
-				perform(&samp, 1);
+			for (long i = 0; i < (frames / hop)-1; i++) {
+				double samp = sample[i*hop];
+				perform(&samp, hop*2);
 			}
 		buffer_unlocksamples(b);
 	}
