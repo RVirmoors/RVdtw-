@@ -59,6 +59,11 @@ void *RVdtw_new(t_symbol *s, long argc, t_atom *argv) {
 }
 
 void RVdtw_free(t_RVdtw *x) {
+	delete x->rv->beat;
+	x->rv->beat = NULL;
+	delete x->rv->chroma;
+	x->rv->chroma = NULL;
+
 	dsp_free((t_pxobject*)x);
 	object_free(x->rv->l_buffer_reference);
 }
@@ -266,7 +271,7 @@ Raskell::Raskell() {
 		score_name = live_name = "";
 
 		features = CHROMA;
-		tempo_model = T_DEQ;
+		tempo_model = T_PID;
 						
 		if (features == MFCCS) {			
 			params = 40; // # of feats to be used
@@ -289,11 +294,12 @@ Raskell::Raskell() {
 
 
 Raskell::~Raskell() {
-		fftw_destroy_plan(plan);
-        fftw_free(in); fftw_free(out);
-		fftw_free(logEnergy);
-		fftw_free(tfeat);
-		fftw_cleanup();
+
+	fftw_destroy_plan(plan);
+    fftw_free(in); fftw_free(out);
+	fftw_free(logEnergy);
+	fftw_free(tfeat);
+	fftw_cleanup();
 		
 		//file_close();
 }
@@ -942,8 +948,9 @@ void Raskell::calc_tempo(int mode) {
 	if (t == 0) return;
 	int second = SampleRate / HOP_SIZE; // number of frames per second
 	float error = (h - h_real);	// for all models
+	static double last_tempo = 1;
+	static double old_tempo = 1; // for ARZT model
 	// for DEQ model
-	static double old_tempo = 1;
 	static double Min = VERY_BIG, Sum;
 	bool new_tempo = false;
 	int K = second, L = second / 2;
@@ -1063,7 +1070,7 @@ void Raskell::calc_tempo(int mode) {
 				} 
 				if (new_tempo && pivot1_t != pivot2_t) {
 					// compute new tempo, avoiding divide by 0
-					old_tempo = tempo = (pivot1_h - pivot2_h) / (pivot1_t - pivot2_t);
+					tempo = (pivot1_h - pivot2_h) / (pivot1_t - pivot2_t);
 					tempotempo = (pivot1_tp - pivot2_tp);
 					t_passed = pivot1_t;
 					//post("pivots %f : %f, Min=%f tt=%f", pivot1_t, pivot2_t, Min, tempotempo);					
@@ -1076,10 +1083,6 @@ void Raskell::calc_tempo(int mode) {
 					//post("- %f", abs(tempotempo) + 0.0001);
 					tempo -= abs(tempotempo) + 0.0001;
 				}	
-				
-				// slowly grow Min so that it can be reached again
-				//if(abs(old_tempo - tempo) > Min)
-				//	Min = abs(old_tempo - tempo);
 			}
 			break;
 		case T_ARZT:
@@ -1125,13 +1128,11 @@ void Raskell::calc_tempo(int mode) {
 				float boost = (Kp*error + Ki*integral) / (10 * (abs(old_tempo - tempo) * (t - t_passed)) +1);
 				if (abs(boost) <= abs(tempo - old_tempo))
 					tempo += boost;
-				// slowly grow Min so that it can be reached again
-				/*if(abs(old_tempo - tempo) > Min)
-					Min = abs(old_tempo - tempo);*/
 			}
 			break;
 	}
-	tempo *= elasticity;
+	tempo = last_tempo + (tempo - last_tempo) * elasticity;
+	last_tempo = tempo;
 }
 
 void Raskell::increment_t() {

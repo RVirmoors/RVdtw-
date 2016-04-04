@@ -45,7 +45,7 @@
 #define MID 0.5 //0.5; //1.9; //1.5
 #define SIDE 1
 #define SEN 1 //0.8 // 0.98//1
-#define ELA 1
+#define ELA 0.2 // 1
 
 // compression params
 #define COMP_THRESH -140
