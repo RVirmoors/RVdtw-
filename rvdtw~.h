@@ -37,14 +37,14 @@
 #define CLASSIC 0
 
 // DTW params
-#define MAXLENGTH 5000000 //maximum input file length (# of frames)
+#define MAXLENGTH 500000 //maximum input file length (# of frames)
 #define VERY_BIG  (1e10)
 #define MAX_RUN 64// 3 //64//50000    minimum 4; should not surpass fsize
 #define ALPHA 1
 #define MID 0.5 //0.5; //1.9; //1.5
 #define SIDE 1
 #define SEN 1 //0.8 // 0.98//1
-#define ELA 0.2 // 1
+#define ELA 1 // 1
 
 // compression params
 #define COMP_THRESH -140
@@ -141,11 +141,12 @@ public:
 	t_atom dump[50];
 
 	//		DSP vars:
+	long hop;
 	t_uint16 active_frames;
 	vector<t_uint16> frame_index;
 	float SampleRate;
 	vector<vector<double> > frame, banks;
-	double *in, *logEnergy, *tfeat;
+	double *in, *logEnergy, *tfeat, *samp;
 	vector<double> window;
 	int m; // Mel filterbanks
 	fftw_complex *out;
@@ -159,6 +160,7 @@ public:
 	vector<vector<float> > y_beats;
 	t_uint16 acc_iter, b_iter;
 	float b_stdev;
+
 
 	//		file handling vars:
 	t_filehandle f_fh;			

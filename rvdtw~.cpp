@@ -215,6 +215,7 @@ void RVdtw_dsp(t_RVdtw *x, t_signal **sp, short *count)
 void RVdtw_dsp64(t_RVdtw *x, t_object *dsp64, short *count, double samplerate, long maxvectorsize, long flags)
 {
 	//post("my sample rate is: %f", samplerate);
+	x->rv->hop = maxvectorsize;
 	x->rv->beat->updateHopAndFrameSize(maxvectorsize, maxvectorsize*2);
 	object_method(dsp64, gensym("dsp_add64"), x, RVdtw_perform64, 0, NULL);
 }
@@ -258,7 +259,7 @@ Raskell::Raskell() {
 		m_count = 0; // one marker is mandatory (to start)
 		previous = 0; // 0 = none; 1 = Row; 2 = Column; 3 = Both
 		input_sel = IN_SCORE; // 1 = SCORE; 2 = LIVE; 0 = closed		
-		follow = TRUE;
+		follow = true;
 		sensitivity = SEN; // sens. to tempo fluctuations
 		elasticity = ELA;
 		integral = t_passed = last_arzt = 0;	
@@ -272,16 +273,19 @@ Raskell::Raskell() {
 
 		SampleRate = sys_getsr();
 		active_frames = WINDOW_SIZE / HOP_SIZE;
+		hop = HOP_SIZE;
 
 		beat = new BTrack();
 		chroma = new Chromagram(WINDOW_SIZE, SampleRate); 
 		chroma->setChromaCalculationInterval(WINDOW_SIZE);
+
 
 		l_buffer_reference = NULL;
 		score_name = live_name = "";
 
 		features = CHROMA;
 		tempo_model = T_PID;
+		samp = fftw_alloc_real(WINDOW_SIZE);
 						
 		if (features == MFCCS) {			
 			params = 40; // # of feats to be used
@@ -336,12 +340,11 @@ void Raskell::init(t_symbol *s,  long argc, t_atom *argv) {
 void Raskell::perform(double *in, long sampleframes, int dest) {
 
 	beat->processAudioFrame(in);
-	if(beat->beatDueInCurrentFrame())
-		post("beat! t= %f", beat->getCurrentTempoEstimate());
+	//if(beat->beatDueInCurrentFrame())
+		//post("beat! t= %f", beat->getCurrentTempoEstimate());
 	
 	if ((h <= ysize) && (iter < ysize) && in[0]) { //&&notzero(ins, sampleframes	
-		std::vector<double> mfcc, chr;
-		static int samples_read = 0;
+		std::vector<double> chr;
 		t_uint32 i, j;
 		for (i=0; i < sampleframes; i++) {
 			add_sample_to_frames(in[i]);
@@ -364,6 +367,7 @@ void Raskell::perform(double *in, long sampleframes, int dest) {
 						if ((*chroma).isReady()) {
 							chr = (*chroma).getChromagram();						
 							tfeat = &chr[0];
+							post("new feat %f", chr[0]);
 						}
 						break;
 				}
@@ -396,6 +400,7 @@ void Raskell::feats(t_uint16 argc) {
 		if ((input_sel == IN_SCORE) && (iter < ysize)) { // build Y matrix (offline)
 			for (j=0; j<argc; j++) {
 				y[iter][j] = tfeat[j];
+				post("new y %f", y[iter][j]);
 			}
 			iter++; //iterate thru Y
 			if (iter == ysize)
@@ -431,6 +436,9 @@ void Raskell::score_size(long v) {
 		for (i=0; i<ysize; i++) {
 			y[i].resize(params);
 		}
+		y_beats.clear();
+		acc_beats.clear();
+		got_y_beats = got_acc_beats = false;
 		post("Score Matrix memory alloc'd, size %i * %i", ysize, params);	
 
 		reset(); // x, dtw arrays
@@ -520,6 +528,7 @@ void Raskell::reset() {
 	for (i=0; i<bsize; i++) {
 		b_move[i].resize(bsize);
 	}
+
 	post("At start position!");
 }
 
@@ -1266,7 +1275,7 @@ bool Raskell::do_read(t_symbol *s) {
 	} else {
 		strcpy(ps,s->s_name);
 		if (locatefile_extended(ps,&vol,&type,&type,-1)) {
-			post("No score file exists, accessing buffer~");
+			post("No %s file exists, accessing buffer~", ps);
 			return false;
 		}
 	}

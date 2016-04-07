@@ -36,6 +36,6 @@
 #define MFCCS 1
 #define CHROMA 2
 
-// beats
-#define B_BEAT 1
-#define B_SCORE 2
+// buffer destination
+#define B_SCORE 1
+#define B_BEAT 2
