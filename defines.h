@@ -37,5 +37,5 @@
 #define CHROMA 2
 
 // buffer destination
-#define B_SCORE 1
-#define B_BEAT 2
+#define B_SOLO 1
+#define B_ACCO 2

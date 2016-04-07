@@ -156,9 +156,9 @@ public:
 	Chromagram *chroma;
 
 	//		beat tracking vars:
-	vector<t_uint16> acc_beats;
-	vector<vector<float> > y_beats;
-	t_uint16 acc_iter, b_iter;
+	vector<float> acc_beats;
+	vector<vector<float> > y_beats; // y_beats[0][]: beats, y_beats[1][]: diffs to acco
+	t_uint16 acc_iter, b_iter, prev_h_beat;
 	float b_stdev;
 
 
@@ -208,6 +208,7 @@ public:
 
 	// beat methods
 	int calc_beat_diff(int cur_beat, int prev_beat, int ref_beat);
+	t_uint16 update_beat_iter(t_uint16 beat_iter, vector<float> *beat_vector, int ref_beat);
 
 	// file input / output methods:
 	bool do_read(t_symbol *s);

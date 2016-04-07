@@ -108,7 +108,7 @@ void RVdtw_scoresize(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv) {
 
 void RVdtw_read(t_RVdtw *x, t_symbol *s) {
 	atom v[1];
-	atom_setlong(v, B_SCORE),
+	atom_setlong(v, B_SOLO),
 	defer_low(x,(method)RVdtw_do_read,s,1,v);
 }
 
@@ -117,12 +117,12 @@ void RVdtw_readacco(t_RVdtw *x, t_symbol *s) {
 	x->rv->acc_iter = 0;	
 	x->rv->beat->updateHopAndFrameSize(HOP_SIZE, HOP_SIZE*2);
 	atom v[1];
-	atom_setlong(v, B_BEAT),
+	atom_setlong(v, B_ACCO),
 	defer_low(x,(method)RVdtw_do_read,s,1,v);
 }
 
 void RVdtw_do_read(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv) {
-	long v = atom_getlong(argv); // B_SCORE or B_BEAT
+	long v = atom_getlong(argv); // B_SOLO or B_ACCO
 	if (!x->rv->do_read(s)) // if input is not a text file
 		x->rv->set_buffer(s, v); // then treat it as a buffer
 }
@@ -192,7 +192,7 @@ void RVdtw_dblclick(t_RVdtw *x) {
 t_max_err RVdtw_notify(t_RVdtw *x, t_symbol *s, t_symbol *msg, void *sender, void *data)
 {
 	if (msg == x->rv->ps_buffer_modified && x->rv->input_sel == IN_SCORE)
-		x->rv->set_buffer(x->rv->buf_name, B_SCORE);
+		x->rv->set_buffer(x->rv->buf_name, B_SOLO);
 	return buffer_ref_notify(x->rv->l_buffer_reference, s, msg, sender, data);
 }
 
@@ -233,7 +233,7 @@ t_int *RVdtw_perform(t_int *w) {
 	t_float *in = (t_float *)(w[2]);
 	int n = (int)w[3];
 
-	x->rv->perform((double *)in, n, B_SCORE);
+	x->rv->perform((double *)in, n, B_SOLO);
 	// you have to return the NEXT pointer in the array OR MAX WILL CRASH
 	return w + 5;
 }
@@ -243,7 +243,7 @@ t_int *RVdtw_perform(t_int *w) {
 void RVdtw_perform64(t_RVdtw *x, t_object *dsp64, double **ins, long numins, double **outs, long numouts, long sampleframes, long flags, void *userparam) {
 	t_double *in = ins[0];		// we get audio for each inlet of the object from the **ins argument
 	int n = sampleframes;
-	x->rv->perform(in, n, B_SCORE);
+	x->rv->perform(in, n, B_SOLO);
 }
 
 
@@ -264,6 +264,8 @@ Raskell::Raskell() {
 		elasticity = ELA;
 		integral = t_passed = last_arzt = 0;	
 		tempos.clear(); errors.clear();
+		y_beats.clear();
+		y_beats.resize(2);
 
 		mid_weight = MID;
 		top_weight = SIDE;
@@ -278,7 +280,7 @@ Raskell::Raskell() {
 		beat = new BTrack();
 		chroma = new Chromagram(WINDOW_SIZE, SampleRate); 
 		chroma->setChromaCalculationInterval(WINDOW_SIZE);
-
+		acc_iter = b_iter = prev_h_beat = 0;
 
 		l_buffer_reference = NULL;
 		score_name = live_name = "";
@@ -330,7 +332,7 @@ void Raskell::init(t_symbol *s,  long argc, t_atom *argv) {
 		
 		if (argc) {
 			if(!do_read(buf_name))
-				set_buffer(buf_name, B_SCORE); // first argument
+				set_buffer(buf_name, B_SOLO); // first argument
 		}
 		else post("no score preloaded");
 
@@ -343,7 +345,34 @@ void Raskell::perform(double *in, long sampleframes, int dest) {
 	//if(beat->beatDueInCurrentFrame())
 		//post("beat! t= %f", beat->getCurrentTempoEstimate());
 	
-	if ((h <= ysize) && (iter < ysize) && in[0]) { //&&notzero(ins, sampleframes	
+	if(beat->beatDueInCurrentFrame()) { // beat detected
+		switch (dest) {
+		case (B_SOLO) : 
+			if (input_sel != IN_LIVE) { // looking at reference
+				y_beats[0].push_back(iter);  // beat pos
+				y_beats[1].push_back(0);	// diff from acco beat (computed below in feats())
+
+			} else if(y_beats[0].size() && h) { // looking at live target
+				float diff_y, diff_acc;
+				//post("live beat! %d", h);
+				// check if live beat aligns with predicted beats
+				b_iter = update_beat_iter(b_iter, &y_beats[0], h);
+				diff_y = calc_beat_diff(h, prev_h_beat, y_beats[0][b_iter]);
+				acc_iter = update_beat_iter(acc_iter, &acc_beats, h);
+				diff_acc = calc_beat_diff(h, prev_h_beat, acc_beats[acc_iter]);
+				prev_h_beat = h;
+				float minerr = min(abs(diff_y) - b_stdev, abs(diff_acc) - b_stdev);
+				post("minerr %f ( %f vs %f ) y: %d acco: %d", minerr, abs(diff_y), abs(diff_acc), iter, acc_iter);
+			}
+			break;
+
+		case (B_ACCO) : // looking at accompaniment
+			acc_beats.push_back(acc_iter);
+			break;
+		}	
+	}
+	
+	if ((dest == B_ACCO || (h <= ysize) && (iter < ysize)) && in[0]) {
 		std::vector<double> chr;
 		t_uint32 i, j;
 		for (i=0; i < sampleframes; i++) {
@@ -351,29 +380,43 @@ void Raskell::perform(double *in, long sampleframes, int dest) {
 		}
 		for(i=0; i<active_frames; i++) {
 			if(frame_index[i]==0) {		// if frame is full, then compute feature vector
-				switch (features) {
-					case (MFCCS) :	
-						for(j=0; j<WINDOW_SIZE; j++)
-							frame[i][j] *= window[j]; // apply hamming window
-						calc_mfcc(i); // get tfeat[]
-						// if signal is loud enough, then compress the first MFCC coefficient (loudness)
-						if (tfeat[0] > COMP_THRESH) 
-							tfeat[0] = compress(tfeat[0], true);//tfeat[0] /= 8;
-						else tfeat[0] = compress(tfeat[0], false);						
-						feats(params);
-						break;					
-					case (CHROMA) :
-						chroma->processAudioFrame(frame[i]);
-						if (chroma->isReady()) {
-							chr = chroma->getChromagram();						
-							tfeat = &chr[0];
-						}
-						break;
+				if (dest != B_ACCO) {
+					switch (features) {
+						case (MFCCS) :	
+							for(j=0; j<WINDOW_SIZE; j++)
+								frame[i][j] *= window[j]; // apply hamming window
+							calc_mfcc(i); // get tfeat[]
+							// if signal is loud enough, then compress the first MFCC coefficient (loudness)
+							if (tfeat[0] > COMP_THRESH) 
+								tfeat[0] = compress(tfeat[0], true);//tfeat[0] /= 8;
+							else tfeat[0] = compress(tfeat[0], false);
+							break;					
+						case (CHROMA) :
+							chroma->processAudioFrame(frame[i]);
+							if (chroma->isReady()) {
+								chr = chroma->getChromagram();						
+								tfeat = &chr[0];
+							}
+							break;
+					}
+					feats(params);
 				}
-				feats(params);
+				if (dest == B_ACCO)
+					acc_iter++; // count frames for ACCO beat marking
 			}
 		}
 	}
+}
+
+t_uint16 Raskell::update_beat_iter(t_uint16 beat_iter, vector<float> *beat_vector, int ref_beat) {
+	if (beat_iter < beat_vector->size()-1) {
+		// while the next beat is closer than the current one, increment iterator
+		while( (beat_iter < beat_vector->size()-1) && 
+			abs(ref_beat - beat_vector->at(beat_iter)) > abs(ref_beat - beat_vector->at(beat_iter+1)) )
+			beat_iter++;
+	}
+//	post("iter %d", beat_iter);
+	return beat_iter;
 }
 
 int Raskell::calc_beat_diff(int cur_beat, int prev_beat, int ref_beat) {
@@ -389,7 +432,6 @@ int Raskell::calc_beat_diff(int cur_beat, int prev_beat, int ref_beat) {
 void Raskell::feats(t_uint16 argc) {
 	if ((ysize > 0) && (input_sel > 0))  { // Y matrix was init'd, let's populate it
 		t_uint16 i, j;
-		double match=1, match_prev=1;
 		if (params != argc) {
 			post("new number of params: %d", argc);
 			params = (t_uint16)argc;
@@ -399,11 +441,34 @@ void Raskell::feats(t_uint16 argc) {
 		if ((input_sel == IN_SCORE) && (iter < ysize)) { // build Y matrix (offline)
 			for (j=0; j<argc; j++) {
 				y[iter][j] = tfeat[j];
-				post("new y %f", y[iter][j]);
 			}
 			iter++; //iterate thru Y
-			if (iter == ysize)
+			if (iter == ysize) {
 				post("SCORE data fully loaded: %i frames, %i markers", ysize, m_count); 
+				if (acc_beats.size()) {
+					// compare Y beats & ACC beats
+					b_iter = acc_iter = 0;
+					float diff = 0;
+					while (b_iter < y_beats[0].size() && acc_iter < acc_beats.size()) {
+						b_iter = update_beat_iter(b_iter, &y_beats[0], int(acc_beats[acc_iter]));
+						assert(b_iter);
+						if (b_iter)
+							y_beats[1][b_iter] = calc_beat_diff(y_beats[0][b_iter], 
+													y_beats[0][b_iter-1], acc_beats[acc_iter]);
+						else 
+							y_beats[1][b_iter] = y_beats[0][b_iter] - acc_beats[acc_iter];
+						diff = (float)(y_beats[1][b_iter] + acc_iter * diff) / (acc_iter + 1); // CMA
+						acc_iter++;
+					}
+					post ("average diff between Y and ACC beats: %f", diff);
+					b_stdev = 0;
+					for ( int i = 0; i < b_iter; i++) 
+						b_stdev += (diff-y_beats[1][i]) * (diff-y_beats[1][i]);
+					b_stdev /= y_beats[0].size();
+					b_stdev = sqrt(b_stdev);
+					post ("std deviation between Y and ACC beats: %f", b_stdev);
+				}
+			}
 		}
 	
 		if (input_sel == IN_LIVE) { // new X feature entered
@@ -436,7 +501,7 @@ void Raskell::score_size(long v) {
 			y[i].resize(params);
 		}
 		y_beats.clear();
-		acc_beats.clear();
+		y_beats.resize(2);
 		post("Score Matrix memory alloc'd, size %i * %i", ysize, params);	
 
 		reset(); // x, dtw arrays
@@ -478,6 +543,7 @@ void Raskell::reset() {
 	top_weight = bot_weight = SIDE;
 	integral = t_passed = last_arzt = 0;	
 	tempos.clear(); errors.clear();
+	acc_iter = b_iter = prev_h_beat = 0;
 	
 	short i;
 
@@ -551,6 +617,8 @@ void Raskell::input(long v) {
 		markers[m_count][0] = ysize-fsize; // add END marker
 		m_iter = 0; // start listening for event markers
 		iter = 0;
+		b_iter = 0;
+		acc_iter = 0;
 	}
 }
 
@@ -1528,7 +1596,7 @@ void Raskell::set_buffer(t_symbol *s, int dest) {
 		}
 		long frames = buffer_getframecount(b);
 		post("Buffer is %d samples long", frames);
-		if (dest == B_SCORE && input_sel == IN_SCORE) {// make new score
+		if (dest == B_SOLO && input_sel == IN_SCORE) {// make new score
 			score_size((long)(frames / HOP_SIZE - active_frames + 1));
 			iter = 1;
 			marker(NULL); // add marker at start (position 1)
@@ -1542,7 +1610,7 @@ void Raskell::set_buffer(t_symbol *s, int dest) {
 				std::copy(sample+i, sample+i+HOP_SIZE, samp); // convert float to double
 				perform(samp, HOP_SIZE, dest);
 			}
-			post("Done reading buffer. %d acco beats. %d y beats.", acc_beats.size(), y_beats.size());
+			post("Done reading buffer. %d acco beats. %d y beats.", acc_beats.size(), y_beats[0].size());
 		}
 		buffer_unlocksamples(b);
 	}
