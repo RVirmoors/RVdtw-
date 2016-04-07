@@ -363,11 +363,10 @@ void Raskell::perform(double *in, long sampleframes, int dest) {
 						feats(params);
 						break;					
 					case (CHROMA) :
-						(*chroma).processAudioFrame(frame[i]);
-						if ((*chroma).isReady()) {
-							chr = (*chroma).getChromagram();						
+						chroma->processAudioFrame(frame[i]);
+						if (chroma->isReady()) {
+							chr = chroma->getChromagram();						
 							tfeat = &chr[0];
-							post("new feat %f", chr[0]);
 						}
 						break;
 				}
@@ -438,7 +437,6 @@ void Raskell::score_size(long v) {
 		}
 		y_beats.clear();
 		acc_beats.clear();
-		got_y_beats = got_acc_beats = false;
 		post("Score Matrix memory alloc'd, size %i * %i", ysize, params);	
 
 		reset(); // x, dtw arrays
