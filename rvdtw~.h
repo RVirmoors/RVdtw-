@@ -39,7 +39,6 @@
 // DTW params
 #define MAXLENGTH 5000000 //maximum input file length (# of frames)
 #define VERY_BIG  (1e10)
-//#define THRESH 0 //0.4 // base threshold for marker admission
 #define MAX_RUN 64// 3 //64//50000    minimum 4; should not surpass fsize
 #define ALPHA 1
 #define MID 0.5 //0.5; //1.9; //1.5
@@ -80,7 +79,8 @@ extern "C" {
 	void RVdtw_input(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv);
 	void RVdtw_scoresize(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv);
 	void RVdtw_read(t_RVdtw *x, t_symbol *s);
-	void RVdtw_do_read(t_RVdtw *x, t_symbol *s); // in deferred thread
+	void RVdtw_readacco(t_RVdtw *x, t_symbol *s);
+	void RVdtw_do_read(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv); // in deferred thread
 	void RVdtw_write(t_RVdtw *x, t_symbol *s);
 	void RVdtw_do_write(t_RVdtw *x, t_symbol *s); // in deferred thread
 
@@ -154,6 +154,12 @@ public:
 	BTrack *beat;
 	Chromagram *chroma;
 
+	//		beat tracking vars:
+	vector<t_uint16> acc_beats;
+	vector<vector<float> > y_beats;
+	t_uint16 acc_iter, b_iter;
+	float b_stdev;
+
 	//		file handling vars:
 	t_filehandle f_fh;			
 	short f_open;			/* spool flag */
@@ -166,7 +172,7 @@ public:
 	Raskell();
 	~Raskell();
 	void init(t_symbol *s,  long argc, t_atom *argv);
-	void perform(double *in, long sampleframes);
+	void perform(double *in, long sampleframes, int dest);
 
 	// inlet methods:
 	void feats(t_uint16 argc);
@@ -176,7 +182,6 @@ public:
 	void input(long v);
 	void gotomarker(long v);
 	void gotoms(long v);
-	//void start();
 
 	// feat extraction methods:
 	void dspinit();
@@ -199,6 +204,9 @@ public:
 	bool decrease_h();
 	void dtw_back();
 
+	// beat methods
+	int calc_beat_diff(int cur_beat, int prev_beat, int ref_beat);
+
 	// file input / output methods:
 	bool do_read(t_symbol *s);
 	void file_open(char *name);
@@ -211,7 +219,7 @@ public:
 	t_symbol *ps_buffer_modified;	
 	t_symbol *buf_name;
 	t_buffer_ref *l_buffer_reference;
-	void set_buffer(t_symbol *s);
+	void set_buffer(t_symbol *s, int dest);
 };
 /*
 // ===== helper functions =====

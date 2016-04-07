@@ -16,6 +16,7 @@ int C74_EXPORT main(void) {
 	class_addmethod(c, (method)RVdtw_input,		"input",	A_GIMME, 0);
 	class_addmethod(c, (method)RVdtw_scoresize,	"score_size",	A_GIMME, 0); // not needed for users
 	class_addmethod(c, (method)RVdtw_read,		"read",		A_DEFSYM,0);
+	class_addmethod(c, (method)RVdtw_readacco,	"readacco",	A_DEFSYM,0);
 	class_addmethod(c, (method)RVdtw_write,		"write",	A_DEFSYM,0);
 
 	class_addmethod(c, (method)RVdtw_gotomarker, "gotomarker",	A_GIMME, 0);
@@ -82,7 +83,7 @@ void RVdtw_assist(t_RVdtw *x, void *b, long m, long a, char *s) {
         {
             case 0: sprintf(s, "t"); break;
             case 1: sprintf(s, "h"); break;
-            case 2: sprintf(s, "dump"); break;                   
+            case 2: sprintf(s, "misc dump"); break;                   
 			case 3: sprintf(s, "computed feat frames"); break;
 			case 4: sprintf(s, "tempo multiplier"); break;
         }	
@@ -90,7 +91,6 @@ void RVdtw_assist(t_RVdtw *x, void *b, long m, long a, char *s) {
 }
 
 void RVdtw_feats(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv) {
-	// TODO AICI CONVERT DIN ATOMS IN ARRAY
 	for (long i = 0; i < argc; i++)
 		x->rv->tfeat[i] = atom_getfloat(argv+i);
 	x->rv->feats(argc);
@@ -107,12 +107,24 @@ void RVdtw_scoresize(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv) {
 }
 
 void RVdtw_read(t_RVdtw *x, t_symbol *s) {
-	defer_low(x,(method)RVdtw_do_read,s,0,0L);
+	atom v[1];
+	atom_setlong(v, B_SCORE),
+	defer_low(x,(method)RVdtw_do_read,s,1,v);
 }
 
-void RVdtw_do_read(t_RVdtw *x, t_symbol *s) {
-	if (!x->rv->do_read(s))
-		x->rv->set_buffer(s);
+void RVdtw_readacco(t_RVdtw *x, t_symbol *s) {
+	x->rv->acc_beats.clear();
+	x->rv->acc_iter = 0;	
+	x->rv->beat->updateHopAndFrameSize(HOP_SIZE, HOP_SIZE*2);
+	atom v[1];
+	atom_setlong(v, B_BEAT),
+	defer_low(x,(method)RVdtw_do_read,s,1,v);
+}
+
+void RVdtw_do_read(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv) {
+	long v = atom_getlong(argv); // B_SCORE or B_BEAT
+	if (!x->rv->do_read(s)) // if input is not a text file
+		x->rv->set_buffer(s, v); // then treat it as a buffer
 }
 
 void RVdtw_read_line(t_RVdtw *x, t_symbol *s) {
@@ -179,8 +191,8 @@ void RVdtw_dblclick(t_RVdtw *x) {
 // this handles notifications when the buffer appears, disappears, or is modified.
 t_max_err RVdtw_notify(t_RVdtw *x, t_symbol *s, t_symbol *msg, void *sender, void *data)
 {
-	if (msg == x->rv->ps_buffer_modified)
-		x->rv->set_buffer(x->rv->buf_name);
+	if (msg == x->rv->ps_buffer_modified && x->rv->input_sel == IN_SCORE)
+		x->rv->set_buffer(x->rv->buf_name, B_SCORE);
 	return buffer_ref_notify(x->rv->l_buffer_reference, s, msg, sender, data);
 }
 
@@ -220,7 +232,7 @@ t_int *RVdtw_perform(t_int *w) {
 	t_float *in = (t_float *)(w[2]);
 	int n = (int)w[3];
 
-	x->rv->perform((double *)in, n);
+	x->rv->perform((double *)in, n, B_SCORE);
 	// you have to return the NEXT pointer in the array OR MAX WILL CRASH
 	return w + 5;
 }
@@ -230,7 +242,7 @@ t_int *RVdtw_perform(t_int *w) {
 void RVdtw_perform64(t_RVdtw *x, t_object *dsp64, double **ins, long numins, double **outs, long numouts, long sampleframes, long flags, void *userparam) {
 	t_double *in = ins[0];		// we get audio for each inlet of the object from the **ins argument
 	int n = sampleframes;
-	x->rv->perform(in, n);
+	x->rv->perform(in, n, B_SCORE);
 }
 
 
@@ -261,11 +273,9 @@ Raskell::Raskell() {
 		SampleRate = sys_getsr();
 		active_frames = WINDOW_SIZE / HOP_SIZE;
 
-		//gist = new Gist<double>(WINDOW_SIZE,SampleRate); 
-		//(*gist).mfcc.setNumCoefficients(m);
 		beat = new BTrack();
-		chroma = new Chromagram(WINDOW_SIZE,SampleRate); 
-		(*chroma).setChromaCalculationInterval(WINDOW_SIZE);
+		chroma = new Chromagram(WINDOW_SIZE, SampleRate); 
+		chroma->setChromaCalculationInterval(WINDOW_SIZE);
 
 		l_buffer_reference = NULL;
 		score_name = live_name = "";
@@ -288,13 +298,11 @@ Raskell::Raskell() {
 			tfeat = fftw_alloc_real(m);
 		}
 		dspinit();
-
-		post ("RV object created");
+		//post ("RV object created");
 }
 
 
 Raskell::~Raskell() {
-
 	fftw_destroy_plan(plan);
     fftw_free(in); fftw_free(out);
 	fftw_free(logEnergy);
@@ -312,22 +320,21 @@ void Raskell::init(t_symbol *s,  long argc, t_atom *argv) {
 		ps_nothing = gensym("");
 		ps_buffer_modified = gensym("buffer_modified");	
 
-		post("RVdtw version %f", RV_VERSION);
+		post("RVdtw version %.2f", RV_VERSION);
 
 		buf_name = (argc) ? atom_getsym(argv) : gensym("");
 		
 		if (argc) {
 			if(!do_read(buf_name))
-				set_buffer(buf_name); // first argument
+				set_buffer(buf_name, B_SCORE); // first argument
 		}
 		else post("no score preloaded");
 
 		srand(744);
 }
 
-void Raskell::perform(double *in, long sampleframes) {
+void Raskell::perform(double *in, long sampleframes, int dest) {
 
-	//float sd = (*gist).spectralDifference();
 	beat->processAudioFrame(in);
 	if(beat->beatDueInCurrentFrame())
 		post("beat! t= %f", beat->getCurrentTempoEstimate());
@@ -364,6 +371,16 @@ void Raskell::perform(double *in, long sampleframes) {
 			}
 		}
 	}
+}
+
+int Raskell::calc_beat_diff(int cur_beat, int prev_beat, int ref_beat) {
+	int newdiff = cur_beat - ref_beat;
+	if (abs(newdiff) > (cur_beat - prev_beat)/4) // reverse phase
+		if (cur_beat < ref_beat)
+			newdiff = cur_beat + (cur_beat - prev_beat)/2 - ref_beat;
+		else
+			newdiff = cur_beat - (cur_beat - prev_beat)/2 - ref_beat;
+	return newdiff;
 }
 
 void Raskell::feats(t_uint16 argc) {
@@ -546,8 +563,6 @@ void Raskell::gotoms(long v) {
 	h = v * (double)(SampleRate / 1000.f / HOP_SIZE);
 	h_mod = h % fsize;
 	h_real = h;
-	//t = h;
-	//t_mod = h_mod;
 }
 
 
@@ -1351,6 +1366,7 @@ bool Raskell::read_line() {
 
 double Raskell::compress(double value, bool active) {
 	static t_uint16 timer = 1;
+	if (t < 4) timer = COMP_RELEASE;
 	if (value > 0) {	// upper thresh (limiter)
 		value = -COMP_THRESH / COMP_RATIO;
 	} else {			// lower thresh
@@ -1484,7 +1500,7 @@ void Raskell::do_write(t_symbol *s) {
 
 // ====================
 
-void Raskell::set_buffer(t_symbol *s) {
+void Raskell::set_buffer(t_symbol *s, int dest) {
 
 	if (!l_buffer_reference)
 		l_buffer_reference = buffer_ref_new((t_object*)max, s);
@@ -1505,7 +1521,7 @@ void Raskell::set_buffer(t_symbol *s) {
 		}
 		long frames = buffer_getframecount(b);
 		post("Buffer is %d samples long", frames);
-		if (input_sel == IN_SCORE) {// make new score
+		if (dest == B_SCORE && input_sel == IN_SCORE) {// make new score
 			score_size((long)(frames / HOP_SIZE - active_frames + 1));
 			iter = 1;
 			marker(NULL); // add marker at start (position 1)
@@ -1517,9 +1533,9 @@ void Raskell::set_buffer(t_symbol *s) {
 			double samp[HOP_SIZE];
 			for (long i = 0; i < frames-HOP_SIZE; i += HOP_SIZE) {			
 				std::copy(sample+i, sample+i+HOP_SIZE, samp); // convert float to double
-				perform(samp, HOP_SIZE);
+				perform(samp, HOP_SIZE, dest);
 			}
-			//post("Done reading buffer. %d acco beats. %d y beats.", acc_beats.size(), y_beats.size());
+			post("Done reading buffer. %d acco beats. %d y beats.", acc_beats.size(), y_beats.size());
 		}
 		buffer_unlocksamples(b);
 	}

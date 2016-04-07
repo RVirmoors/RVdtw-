@@ -33,6 +33,9 @@
 #define T_ARZT 4
 
 // audio features
-#define MFCCS 0
-//#define GIST_MFCCS 1
-#define CHROMA 1
+#define MFCCS 1
+#define CHROMA 2
+
+// beats
+#define B_BEAT 1
+#define B_SCORE 2
