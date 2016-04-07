@@ -1512,12 +1512,15 @@ void Raskell::set_buffer(t_symbol *s) {
 		}
 
 		float* sample = buffer_locksamples(b);
-		
-		if (sample)
-			for (long i = 0; i < frames; i++) {
-				double samp = sample[i];
-				perform(&samp, 1);
+
+		if (sample) {
+			double samp[HOP_SIZE];
+			for (long i = 0; i < frames-HOP_SIZE; i += HOP_SIZE) {			
+				std::copy(sample+i, sample+i+HOP_SIZE, samp); // convert float to double
+				perform(samp, HOP_SIZE);
 			}
+			//post("Done reading buffer. %d acco beats. %d y beats.", acc_beats.size(), y_beats.size());
+		}
 		buffer_unlocksamples(b);
 	}
 }
