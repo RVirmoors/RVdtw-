@@ -164,7 +164,7 @@ public:
 	float b_stdev, minerr;
 	float elast_beat; // elasticity modulation by beat accuracy
 	bool beat_due;
-
+	double ref_tempo;
 
 	//		file handling vars:
 	t_filehandle f_fh;			
@@ -204,7 +204,7 @@ public:
 	void calc_dtw(t_uint16 i, t_uint16 j);
 	void dtw_process();
 	double compress(double value, bool active);
-	void calc_tempo(int mode);
+	double calc_tempo(int mode);
 	void increment_t();
 	void increment_h();
 	bool decrease_h();
@@ -213,6 +213,7 @@ public:
 	// beat methods
 	int calc_beat_diff(double cur_beat, double prev_beat, double ref_beat);
 	t_uint16 update_beat_iter(t_uint16 beat_iter, vector<float> *beat_vector, double ref_beat);
+	double calc_beat_tempo();
 
 	// file input / output methods:
 	bool do_read(t_symbol *s);

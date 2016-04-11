@@ -288,7 +288,7 @@ Raskell::Raskell() {
 		score_name = live_name = "";
 
 		features = MFCCS;
-		tempo_model = T_PID;
+		tempo_model = T_DEQ;
 		samp = fftw_alloc_real(WINDOW_SIZE);
 						
 		if (features == MFCCS) {			
@@ -366,12 +366,13 @@ void Raskell::perform(double *in, long sampleframes, int dest) {
 				} else 
 					diff_acc = VERY_BIG;				
 				prev_h_beat = h_real;
-				//minerr = diff_acc - y_beats[1][b_iter];
-					//abs(diff_acc - y_beats[1][b_iter]) - b_stdev;
+				minerr = abs(diff_acc - y_beats[1][b_iter]) - b_stdev;
 					//diff_y - diff_acc;
 					//min(abs(diff_y) - b_stdev, abs(diff_acc) - b_stdev);
 				//post("minerr %f ( %f vs %f ) y: %d acco: %d", minerr, abs(diff_y), abs(diff_acc), iter, acc_iter);
-
+				
+				if (minerr < 0)
+					ref_tempo = beat->getCurrentTempoEstimate();
 
 				minerr = 0;
 				int i = 0;
@@ -1061,49 +1062,50 @@ void Raskell::dtw_back() {
 	}
 }
 
-void Raskell::calc_tempo(int mode) {
-	if (t == 0) return;
+double Raskell::calc_tempo(int mode) {
+	if (t == 0) return 1;
 	int second = SampleRate / HOP_SIZE; // number of frames per second
 	static double last_tempo = 1;
+	double new_tempo;
 	static t_int16 last_beat = 1;
 	static double old_tempo = 1; // for ARZT model
 	// for DEQ model
 	static double Min = VERY_BIG, Sum;
-	bool new_tempo = false;
+	bool got_new_tempo = false;
 	int K = second, L = second / 2;
 	t_uint16 counter = 0;
 
 	switch(mode) {
 		case T_DTW:
 			if (t <= second)
-				tempo = 1;
+				new_tempo = 1;
 			else { 			
 				if(beat_due) {
 					// updated every beat
 					post("update tempo, beat ela: %f", elast_beat);
-					tempo = (double)(history[t] - history[last_beat]) / (t - last_beat);
+					new_tempo = (double)(history[t] - history[last_beat]) / (t - last_beat);
 					last_beat = t;
 				}
 			}
 			break;
 		case T_P:
 			if (t <= second)
-				tempo = 1;
+				new_tempo = 1;
 			else { 		
 				if (beat_due) {
 					// tempo model in Papiotis10, updated every beat
 					if(elast_beat == 1) post("update tempo 1");
 					else post ("%.2f", elast_beat);
-					tempo = (double)(history[t] - history[last_beat]) / (t - last_beat);
+					new_tempo = (double)(history[t] - history[last_beat]) / (t - last_beat);
 					double boost = error / ((double)(t - last_beat)*10);
-					tempo += boost;
+					new_tempo += boost;
 					last_beat = t;
 				}
 			}
 			break;
 		case T_PID:
 			if (t <= second)
-				tempo = 1;
+				new_tempo = 1;
 			else { 		
 				errors.push_back(error);
 				if(errors.size() > (t - last_beat))
@@ -1114,11 +1116,11 @@ void Raskell::calc_tempo(int mode) {
 					// PID tempo model							
 					if(elast_beat == 1) post("update tempo 1");
 					else post ("%.2f", elast_beat);			
-					tempo = (double)(history[t] - history[last_beat]) / (t - last_beat);
+					new_tempo = (double)(history[t] - history[last_beat]) / (t - last_beat);
 					float derivate = (error - errors[0]) / (t - last_beat);
 					//post("err = %f // int = %f // der = %f", Kp*error, Ki*integral, Kd*derivate);
 					double boost = (Kp*error + Ki*integral + Kd * derivate) / ((double)(t - last_beat));
-					tempo += boost;
+					new_tempo += boost;
 					last_beat = t;
 				}
 			}
@@ -1128,7 +1130,7 @@ void Raskell::calc_tempo(int mode) {
 			// first pivot is within L steps from path origin
 			// 2nd pivot is at least K steps away from 1st, AND minimizes SUM(var_tempo[pivots])
 			if (t < bsize || h < bsize)
-				tempo = 1;// history[t] - history[t-1]; // not yet active
+				new_tempo = 1;// history[t] - history[t-1]; // not yet active
 			else {				
 				pivot1_t = pivot1_h = pivot2_t = pivot2_h = 0;
 				pivot1_tp = pivot2_tp = 1;
@@ -1174,7 +1176,7 @@ void Raskell::calc_tempo(int mode) {
 								pivot2_t = b_err[iplusK][1];
 								pivot2_h = b_err[iplusK][2];
 								pivot2_tp = b_err[iplusK][3];
-								new_tempo = true; 
+								got_new_tempo = true; 
 							} else {
 								if (pivot1_t) counter++;
 								pivot1_t = (b_err[Deque.front()][1] + counter * pivot1_t) / (counter + 1); // CMA
@@ -1183,15 +1185,15 @@ void Raskell::calc_tempo(int mode) {
 								pivot2_t = (b_err[iplusK][1] + counter * pivot2_t) / (counter + 1); // CMA
 								pivot2_h = (b_err[iplusK][2] + counter * pivot2_h) / (counter + 1); // CMA
 								pivot2_tp = (b_err[iplusK][3] + counter * pivot2_tp) / (counter + 1); // CMA
-								new_tempo = true; 
+								got_new_tempo = true; 
 							}
 						}		
 					}
 					j++;
 				} 
-				if (new_tempo && pivot1_t != pivot2_t) {
+				if (got_new_tempo && pivot1_t != pivot2_t) {
 					// compute new tempo, avoiding divide by 0
-					tempo = (pivot1_h - pivot2_h) / (pivot1_t - pivot2_t);
+					new_tempo = (pivot1_h - pivot2_h) / (pivot1_t - pivot2_t);
 					tempotempo = (pivot1_tp - pivot2_tp);
 					t_passed = pivot1_t;
 					//post("pivots %f : %f, Min=%f tt=%f", pivot1_t, pivot2_t, Min, tempotempo);					
@@ -1199,23 +1201,23 @@ void Raskell::calc_tempo(int mode) {
 				// correct err
 				if (error > 2) {
 					//post("+ %f", abs(tempotempo) + 0.0001);
-					tempo += abs(tempotempo) + 0.0001;
+					new_tempo += abs(tempotempo) + 0.0001;
 				} else if (error < -2) {
 					//post("- %f", abs(tempotempo) + 0.0001);
-					tempo -= abs(tempotempo) + 0.0001;
+					new_tempo -= abs(tempotempo) + 0.0001;
 				}	
 			}
 			break;
 		case T_ARZT:
 			if (t < bsize || h < bsize)
-				tempo = 1;//history[t] - history[t-1]; // not yet active
+				new_tempo = 1;//history[t] - history[t-1]; // not yet active
 			else {
 				int i = (b_start-40+bsize)%bsize, j = 0;
 				float derr_i = abs(b_err[(i-40+bsize)%bsize][3] - b_err[(i-41+bsize)%bsize][3]) +
 								abs(b_err[(i-41+bsize)%bsize][3] - b_err[(i-42+bsize)%bsize][3]);
 				while (j < 2*K && b_err[i][1] > t_passed + 4) {
 					if(derr_i == 0) {
-						new_tempo = true;
+						got_new_tempo = true;
 						t_passed = b_err[i][1];
 						last_arzt = b_err[i][3];
 						if (2*K - j > 8) { // spread them out 
@@ -1226,61 +1228,85 @@ void Raskell::calc_tempo(int mode) {
 					j++;
 					i = (i-1+bsize)%bsize;
 				}
-				if (new_tempo) {
+				if (got_new_tempo) {
 					tempos.push_back(last_arzt);
 					//post("Added tempo %f, total %d tempos, t = %d", last_arzt, tempos.size(), t);
 					if (tempos.size() == 6)
 						tempos.pop_front();
 					if (tempos.size() > 3) {
-						tempo = i = 0;
+						new_tempo = i = 0;
 						for (deque<double>::iterator it = tempos.begin(); it!=tempos.end(); ++it) {
-							tempo += *it * (i+1);	// sum of tempos[i]*(n-i)
+							new_tempo += *it * (i+1);	// sum of tempos[i]*(n-i)
 							i++;
 						}						
-						tempo /= (tempos.size() * (tempos.size()+1) / 2); // sum of 1..n							
+						new_tempo /= (tempos.size() * (tempos.size()+1) / 2); // sum of 1..n							
 						//post("mean = %f", tempo);
-						old_tempo = tempo;
+						old_tempo = new_tempo;
 						t_passed = t;
 					}
 				}
 				// add PID ajustment:
 				if (abs(error) < 30.f) //anti-windup
 					integral += error;
-				float boost = (Kp*error + Ki*integral) / (10 * (abs(old_tempo - tempo) * (t - t_passed)) +1);
-				if (abs(boost) <= abs(tempo - old_tempo))
-					tempo += boost;
+				float boost = (Kp*error + Ki*integral) / (10 * (abs(old_tempo - new_tempo) * (t - t_passed)) +1);
+				if (abs(boost) <= abs(new_tempo - old_tempo))
+					new_tempo += boost;
 			}
 			break;
 	}
-	if (tempo != last_tempo) {
-		tempo = last_tempo + (tempo - last_tempo) * elasticity;
-		last_tempo = tempo;
+	if (new_tempo != last_tempo) {
+		new_tempo = last_tempo + (new_tempo - last_tempo) * elasticity * elast_beat;
+		last_tempo = new_tempo;
 	}
 	beat_due = false;
+	return new_tempo;
 }
 
 void Raskell::increment_t() {
 	error = (h - h_real);
 	static short calc = 0; //bool
+	double beat_tempo = calc_beat_tempo();
+
+	static int waiting = 0;
+
 	// sensitivity to tempo fluctuations:
 	if (abs(error) > pow(1.f-sensitivity, 2)*100.f + abs(minerr)) {
-		calc_tempo(tempo_model);	
-		calc = 1;
+		if (abs(b_err[b_start][0]) > 15 && abs(tempo - beat_tempo) > 0.25) {
+			// DTW is way off, beat tracker takes over
+			post("big error! %f != %f", tempo, beat_tempo);
+			waiting = fsize;
+		}
+		if (waiting) {
+			tempo = beat_tempo;		
+			calc = 2;
+		} else {
+			if (calc == 2) {
+				h_real = h;
+				post("moved H_real to H");
+			}
+			tempo = calc_tempo(tempo_model);	
+			calc = 1;
+		}
 	}		
 	else if (abs(error) <= 1 && calc && t > 40) {
 		tempo = b_err[(b_start-40+bsize)%bsize][3];
 		calc = 0;
 	}
+	
+
+	if(waiting > 0) waiting--;
+
 	if (tempo > 0) {
 		if (tempo < 3 && tempo > 0.33) {
 			outlet_float(max->out_tempo, tempo);
 			h_real += tempo;
 		} else {
-			post("OUT OF CONTROL");
+			post("OUT OF CONTROL tempo = %f", tempo);
 			tempo = 1;
+			waiting = fsize;
 			//h_real = h;
-			h = h_real;
-			h_mod = h%fsize;
+			//h = h_real;
+			//h_mod = h%fsize;
 		}
 	}
 	// output real H
@@ -1297,11 +1323,41 @@ void Raskell::increment_t() {
 	t_mod = (t_mod+1)%fsize;
 }
 
+double Raskell::calc_beat_tempo() {
+	/*if (beat->beatDueInCurrentFrame()) {
+		post ("h= %d becomes %f", h, h_real);
+		h = h_real;
+		h_mod = h%fsize;
+	}*/
+	return (beat->getCurrentTempoEstimate() / ref_tempo);
+}
+
 void Raskell::increment_h() {
 	h++;
 	h_mod = (h_mod+1)%fsize;
+	/*
+	elast_beat = 1;
+	float dist = 3/(abs(y_beats[1][b_iter])+1);
+	if (h > y_beats[0][b_iter] - dist && h < y_beats[0][b_iter]) {
+		elast_beat = ( y_beats[0][b_iter] - h ) / dist;
+	}
+	dist = 10/(abs(y_beats[1][b_iter])+1);
+	if (h < y_beats[0][b_iter] + dist && h >= y_beats[0][b_iter]) {
+		elast_beat = ( h - y_beats[0][b_iter] ) / dist;
+	}
 
-	if (h == markers[m_iter][M_SCORED]) {
+	if (b_iter+1 < y_beats[1].size()) {
+		dist = 3/(abs(y_beats[1][b_iter+1])+1);
+		if (h > y_beats[0][b_iter+1] - dist && h < y_beats[0][b_iter+1]) {
+			elast_beat = ( y_beats[0][b_iter+1] - h ) / dist;
+		}
+		dist = 10/(abs(y_beats[1][b_iter+1])+1);
+		if (h < y_beats[0][b_iter+1] + dist && h >= y_beats[0][b_iter+1]) {
+			elast_beat = ( h - y_beats[0][b_iter+1] ) / dist;
+		}
+	}*/
+
+	if (h >= markers[m_iter][M_SCORED]) {
 	//if (h_real >= markers[m_iter][M_SCORED]) {
 		markers[m_iter][M_LIVE] = t; // marker detected at time "t"
 		//markers[m_iter][M_HOOK] = dtw_certainty;
