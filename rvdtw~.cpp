@@ -1278,7 +1278,9 @@ void Raskell::increment_t() {
 		} else {
 			post("OUT OF CONTROL");
 			tempo = 1;
-			h_real = h;				
+			//h_real = h;
+			h = h_real;
+			h_mod = h%fsize;
 		}
 	}
 	// output real H
