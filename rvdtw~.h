@@ -43,7 +43,7 @@
 #define ALPHA 1
 #define MID 0.5 //0.5; //1.9; //1.5
 #define SIDE 1
-#define SEN 1 //0.8 // 0.98//1
+#define SEN 1 // 0.9 // 0.98//1
 #define ELA 1 // 1
 
 // compression params
@@ -136,6 +136,7 @@ public:
 	double last_arzt;
 	float sensitivity; // tempo fluctuations
 	float elasticity; // tempo response amp.
+	float error; // tempo tracking error vs DTW path / beats
 
 	t_uint16 runCount, maxRunCount, m_iter, m_ideal_iter, m_count, input_sel;
 	t_atom dump[50];
@@ -158,8 +159,11 @@ public:
 	//		beat tracking vars:
 	vector<float> acc_beats;
 	vector<vector<float> > y_beats; // y_beats[0][]: beats, y_beats[1][]: diffs to acco
-	t_uint16 acc_iter, b_iter, prev_h_beat;
-	float b_stdev;
+	t_uint16 acc_iter, b_iter;
+	double prev_h_beat;
+	float b_stdev, minerr;
+	float elast_beat; // elasticity modulation by beat accuracy
+	bool beat_due;
 
 
 	//		file handling vars:
@@ -207,8 +211,8 @@ public:
 	void dtw_back();
 
 	// beat methods
-	int calc_beat_diff(int cur_beat, int prev_beat, int ref_beat);
-	t_uint16 update_beat_iter(t_uint16 beat_iter, vector<float> *beat_vector, int ref_beat);
+	int calc_beat_diff(double cur_beat, double prev_beat, double ref_beat);
+	t_uint16 update_beat_iter(t_uint16 beat_iter, vector<float> *beat_vector, double ref_beat);
 
 	// file input / output methods:
 	bool do_read(t_symbol *s);

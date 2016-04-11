@@ -262,6 +262,8 @@ Raskell::Raskell() {
 		follow = true;
 		sensitivity = SEN; // sens. to tempo fluctuations
 		elasticity = ELA;
+		elast_beat = 1;
+		beat_due = false;
 		integral = t_passed = last_arzt = 0;	
 		tempos.clear(); errors.clear();
 		y_beats.clear();
@@ -285,7 +287,7 @@ Raskell::Raskell() {
 		l_buffer_reference = NULL;
 		score_name = live_name = "";
 
-		features = CHROMA;
+		features = MFCCS;
 		tempo_model = T_PID;
 		samp = fftw_alloc_real(WINDOW_SIZE);
 						
@@ -352,17 +354,39 @@ void Raskell::perform(double *in, long sampleframes, int dest) {
 				y_beats[0].push_back(iter);  // beat pos
 				y_beats[1].push_back(0);	// diff from acco beat (computed below in feats())
 
-			} else if(y_beats[0].size() && h) { // looking at live target
+			} else if(y_beats[0].size() && h_real) { // looking at live target
 				float diff_y, diff_acc;
 				//post("live beat! %d", h);
 				// check if live beat aligns with predicted beats
-				b_iter = update_beat_iter(b_iter, &y_beats[0], h);
-				diff_y = calc_beat_diff(h, prev_h_beat, y_beats[0][b_iter]);
-				acc_iter = update_beat_iter(acc_iter, &acc_beats, h);
-				diff_acc = calc_beat_diff(h, prev_h_beat, acc_beats[acc_iter]);
-				prev_h_beat = h;
-				float minerr = min(abs(diff_y) - b_stdev, abs(diff_acc) - b_stdev);
-				post("minerr %f ( %f vs %f ) y: %d acco: %d", minerr, abs(diff_y), abs(diff_acc), iter, acc_iter);
+				b_iter = update_beat_iter(b_iter, &y_beats[0], h_real);
+				diff_y = calc_beat_diff(h_real, prev_h_beat, y_beats[0][b_iter]);
+				if (acc_beats.size()) {
+					acc_iter = update_beat_iter(acc_iter, &acc_beats, h_real);
+					diff_acc = calc_beat_diff(h_real, prev_h_beat, acc_beats[acc_iter]);
+				} else 
+					diff_acc = VERY_BIG;				
+				prev_h_beat = h_real;
+				//minerr = diff_acc - y_beats[1][b_iter];
+					//abs(diff_acc - y_beats[1][b_iter]) - b_stdev;
+					//diff_y - diff_acc;
+					//min(abs(diff_y) - b_stdev, abs(diff_acc) - b_stdev);
+				//post("minerr %f ( %f vs %f ) y: %d acco: %d", minerr, abs(diff_y), abs(diff_acc), iter, acc_iter);
+
+
+				minerr = 0;
+				int i = 0;
+				if (b_iter > 3)
+					i = b_iter - 3;
+				for(; i <= b_iter; i++) {
+					minerr += y_beats[1][b_iter];
+				}
+				minerr /= 3;
+				// output minerr
+				atom_setsym(dump, gensym("beat_err"));
+				atom_setlong(dump+1, minerr);
+				outlet_list(max->out_dump, 0L, 2, dump);
+
+				beat_due = true;
 			}
 			break;
 
@@ -408,7 +432,7 @@ void Raskell::perform(double *in, long sampleframes, int dest) {
 	}
 }
 
-t_uint16 Raskell::update_beat_iter(t_uint16 beat_iter, vector<float> *beat_vector, int ref_beat) {
+t_uint16 Raskell::update_beat_iter(t_uint16 beat_iter, vector<float> *beat_vector, double ref_beat) {
 	if (beat_iter < beat_vector->size()-1) {
 		// while the next beat is closer than the current one, increment iterator
 		while( (beat_iter < beat_vector->size()-1) && 
@@ -419,7 +443,7 @@ t_uint16 Raskell::update_beat_iter(t_uint16 beat_iter, vector<float> *beat_vecto
 	return beat_iter;
 }
 
-int Raskell::calc_beat_diff(int cur_beat, int prev_beat, int ref_beat) {
+int Raskell::calc_beat_diff(double cur_beat, double prev_beat, double ref_beat) {
 	int newdiff = cur_beat - ref_beat;
 	if (abs(newdiff) > (cur_beat - prev_beat)/4) // reverse phase
 		if (cur_beat < ref_beat)
@@ -461,7 +485,7 @@ void Raskell::feats(t_uint16 argc) {
 						acc_iter++;
 					}
 					post ("average diff between Y and ACC beats: %f", diff);
-					b_stdev = 0;
+					b_stdev = minerr = 0;
 					for ( int i = 0; i < b_iter; i++) 
 						b_stdev += (diff-y_beats[1][i]) * (diff-y_beats[1][i]);
 					b_stdev /= y_beats[0].size();
@@ -866,6 +890,9 @@ void Raskell::dtw_process() {
 	if(debug) post("next 1:row/2:column/3:both : %i", inc);
 
 	// it's possible to have several Y/h hikes for each X/t feature:
+	assert(inc);
+	assert(ysize);
+	assert(markers[0][0]);
 	while((inc == NEW_ROW) && (h < ysize) && (h != markers[0][0] + fsize-1)) {
 		if (h >= prev_h)
 			outlet_int(max->out_h, h);
@@ -1037,8 +1064,8 @@ void Raskell::dtw_back() {
 void Raskell::calc_tempo(int mode) {
 	if (t == 0) return;
 	int second = SampleRate / HOP_SIZE; // number of frames per second
-	float error = (h - h_real);	// for all models
 	static double last_tempo = 1;
+	static t_int16 last_beat = 1;
 	static double old_tempo = 1; // for ARZT model
 	// for DEQ model
 	static double Min = VERY_BIG, Sum;
@@ -1051,9 +1078,11 @@ void Raskell::calc_tempo(int mode) {
 			if (t <= second)
 				tempo = 1;
 			else { 			
-				if (t % (second/2) == 0) {
-					// updated about every 1s
-					tempo = (double)(history[t] - history[t - (second/2)]) / (second/2);
+				if(beat_due) {
+					// updated every beat
+					post("update tempo, beat ela: %f", elast_beat);
+					tempo = (double)(history[t] - history[last_beat]) / (t - last_beat);
+					last_beat = t;
 				}
 			}
 			break;
@@ -1061,11 +1090,14 @@ void Raskell::calc_tempo(int mode) {
 			if (t <= second)
 				tempo = 1;
 			else { 		
-				if (t % second == 0) {
-					// tempo model in Papiotis10, updated about every 1s
-					tempo = (double)(history[t] - history[t - second]) / second;
-					double boost = error / ((double)second*10);
+				if (beat_due) {
+					// tempo model in Papiotis10, updated every beat
+					if(elast_beat == 1) post("update tempo 1");
+					else post ("%.2f", elast_beat);
+					tempo = (double)(history[t] - history[last_beat]) / (t - last_beat);
+					double boost = error / ((double)(t - last_beat)*10);
 					tempo += boost;
+					last_beat = t;
 				}
 			}
 			break;
@@ -1074,17 +1106,20 @@ void Raskell::calc_tempo(int mode) {
 				tempo = 1;
 			else { 		
 				errors.push_back(error);
-				if(errors.size() > (second/2))
+				if(errors.size() > (t - last_beat))
 					errors.pop_front();
 				if (abs(error) < 20.f) //anti-windup
 					integral += error;
-				if (t % (second/2) == 0) {
-					// PI tempo model					
-					tempo = (double)(history[t] - history[t - (second/2)]) / (second/2);
-					float derivate = (error - errors[0]) / (second/2);
+				if (beat_due) {
+					// PID tempo model							
+					if(elast_beat == 1) post("update tempo 1");
+					else post ("%.2f", elast_beat);			
+					tempo = (double)(history[t] - history[last_beat]) / (t - last_beat);
+					float derivate = (error - errors[0]) / (t - last_beat);
 					//post("err = %f // int = %f // der = %f", Kp*error, Ki*integral, Kd*derivate);
-					double boost = (Kp*error + Ki*integral + Kd * derivate) / ((double)(second/2));
+					double boost = (Kp*error + Ki*integral + Kd * derivate) / ((double)(t - last_beat));
 					tempo += boost;
+					last_beat = t;
 				}
 			}
 			break;
@@ -1106,12 +1141,10 @@ void Raskell::calc_tempo(int mode) {
 						if (!Deque.empty()) {
 							float derr_i = abs(b_err[(i-40+bsize)%bsize][3] - b_err[(i-41+bsize)%bsize][3]) +
 								abs(b_err[(i-41+bsize)%bsize][3] - b_err[(i-42+bsize)%bsize][3]);
-								//abs(b_err[i][0]-b_avgerr); //abs(b_err[i][0]-b_err[(i-4+bsize)%bsize][0]) / 4;
 							float derr_q = abs(b_err[(Deque.front())%bsize][3] - 
 												b_err[(Deque.front()-1+bsize)%bsize][3]) + 
 											abs(b_err[(Deque.front()-1+bsize)%bsize][3] - 
 												b_err[(Deque.front()-2+bsize)%bsize][3])	;
-								//abs(b_err[Deque.front()][0]-b_avgerr);//abs(b_err[Deque.front()][0]-b_err[(Deque.front()-4+bsize)%bsize][0]) / 4;
 							while (!Deque.empty() && derr_i < derr_q) {
 								Deque.pop_front();   
 								popped = true;
@@ -1125,12 +1158,10 @@ void Raskell::calc_tempo(int mode) {
 												b_err[(iplusK-1+bsize)%bsize][3]) +
 											abs(b_err[(iplusK-1+bsize)%bsize][3] - 
 												b_err[(iplusK-2+bsize)%bsize][3]);
-							//abs(b_err[iplusK][0]-b_avgerr);//abs(b_err[iplusK][0]-b_err[(iplusK-4+bsize)%bsize][0]) / 4;
 						float derr_q = abs(b_err[(Deque.front())%bsize][3] - 
 												b_err[(Deque.front()-1+bsize)%bsize][3]) +
 										abs(b_err[(Deque.front()-1+bsize)%bsize][3] - 
 												b_err[(Deque.front()-2+bsize)%bsize][3]);
-							//abs(b_err[Deque.front()][0]-b_avgerr);//abs(b_err[Deque.front()][0]-b_err[(Deque.front()-4+bsize)%bsize][0]) / 4;
 						Sum = derr_q + derr_ipK;
 						if (Sum <= Min) {
 							if (Sum < Min) {
@@ -1165,7 +1196,7 @@ void Raskell::calc_tempo(int mode) {
 					t_passed = pivot1_t;
 					//post("pivots %f : %f, Min=%f tt=%f", pivot1_t, pivot2_t, Min, tempotempo);					
 				} 		
-				// PID
+				// correct err
 				if (error > 2) {
 					//post("+ %f", abs(tempotempo) + 0.0001);
 					tempo += abs(tempotempo) + 0.0001;
@@ -1221,15 +1252,18 @@ void Raskell::calc_tempo(int mode) {
 			}
 			break;
 	}
-	tempo = last_tempo + (tempo - last_tempo) * elasticity;
-	last_tempo = tempo;
+	if (tempo != last_tempo) {
+		tempo = last_tempo + (tempo - last_tempo) * elasticity;
+		last_tempo = tempo;
+	}
+	beat_due = false;
 }
 
 void Raskell::increment_t() {
-	float error = h - h_real;
+	error = (h - h_real);
 	static short calc = 0; //bool
 	// sensitivity to tempo fluctuations:
-	if (abs(error) > pow(1.f-sensitivity, 2)*100.f) {
+	if (abs(error) > pow(1.f-sensitivity, 2)*100.f + abs(minerr)) {
 		calc_tempo(tempo_model);	
 		calc = 1;
 	}		
