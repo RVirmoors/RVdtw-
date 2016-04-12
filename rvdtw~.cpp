@@ -287,7 +287,7 @@ Raskell::Raskell() {
 		l_buffer_reference = NULL;
 		score_name = live_name = "";
 		
-		features = MFCCS;
+		features = CHROMA;
 		tempo_model = T_DEQ;
 		master = MA_SOLO;
 		samp = fftw_alloc_real(WINDOW_SIZE);
@@ -473,7 +473,8 @@ void Raskell::feats(t_uint16 argc) {
 			}
 			iter++; //iterate thru Y
 			if (iter == ysize) {
-				post("SCORE data fully loaded: %i frames, %i markers", ysize, m_count); 
+				post("SCORE data fully loaded: %i frames, %i markers, %i ACC beats, %i Y beats.", 
+					ysize, m_count, acc_beats.size(), y_beats[0].size()); 
 				if (acc_beats.size()) {
 					// compare Y beats & ACC beats
 					b_iter = acc_iter = 0;
@@ -549,7 +550,7 @@ void Raskell::marker(t_symbol * s) {
 	// add new marker
 	if ((input_sel == IN_SCORE) && ysize) {
 		markers[m_iter][M_SCORED] = iter; // new marker at position iter
-		post("Marker entered at position %i", iter);
+		//post("Marker entered at position %i", iter);
 		//markers[m_iter][M_HOOK] = (t_uint16)s;// ? atom_getlong(av) : 0;
 		//post("MARKER_HOOK: %i", markers[m_iter][1]);
 		m_count++;
@@ -557,7 +558,7 @@ void Raskell::marker(t_symbol * s) {
 	}
 	else if (input_sel == IN_LIVE) {
 		markers[m_ideal_iter][M_IDEAL] = iter;
-		post("Marker (ideal) entered at position %i", iter);
+		//post("Marker (ideal) entered at position %i", iter);
 		m_ideal_iter++;
 	}
 	
@@ -637,7 +638,9 @@ void Raskell::input(long v) {
 	}
 	switch (input_sel) {
 		case 0 : post("input selection is: OFF"); break;
-		case IN_SCORE : post("input selection is: SCORE"); break;
+		case IN_SCORE : post("input selection is: SCORE");			
+			if (ref_tempo)	beat->setTempo(ref_tempo);
+			break;
 		case IN_LIVE : post("input selection is: LIVE"); break;
 		case OUT_IO : post("inputs OFF, ready to write history!"); break;
 	}
@@ -648,8 +651,8 @@ void Raskell::input(long v) {
 		iter = 0;
 		b_iter = 0;
 		acc_iter = 0;
-		beat->setTempo(ref_tempo);
-		post ("reference tempo set at %.2f BPM", ref_tempo);
+		if (ref_tempo)	beat->setTempo(ref_tempo);
+		//post ("reference tempo set at %.2f BPM", ref_tempo);
 	}
 }
 
@@ -1270,7 +1273,7 @@ double Raskell::calc_tempo(int mode) {
 
 void Raskell::increment_t() {
 	error = (h - h_real);
-	static short calc = 0; //bool
+	static short calc = 0; // 0: insensitive, 1: DTW track, 2: beat track
 	double beat_tempo = calc_beat_tempo();
 
 	static int waiting = 0;
@@ -1287,8 +1290,8 @@ void Raskell::increment_t() {
 			calc = 2;
 		} else {
 			if (calc == 2) {
-				h_real = h;
-				post("moved H_real to H");
+		//		h_real = h;
+		//		post("moved H_real to H");
 			}
 			tempo = calc_tempo(tempo_model);	
 			calc = 1;
@@ -1530,9 +1533,19 @@ bool Raskell::read_line() {
 			break;
 		}
 
-		feats(params); 
 		if(strstr(buf, "marker"))//-buf==0) // marker
 			marker(NULL);
+		if(strstr(buf, " beat")) {
+			y_beats[0].push_back(iter);  // beat pos
+			y_beats[1].push_back(0);	// diff from acco beat (computed below in feats())
+			//post("new Y beat at %d", iter);
+		}
+		if(strstr(buf, "accobeat")) {
+			acc_beats.push_back(iter);  // beat pos
+			//post("new ACC beat at %d", iter);
+		}
+		feats(params); 
+
 	}
 	return false;
 }
@@ -1614,10 +1627,19 @@ void Raskell::do_write(t_symbol *s) {
 		}
 	} else if (input_sel == IN_SCORE) { // in SCORE mode, save the score
 		strcpy(filename, "score.txt");
+		b_iter = acc_iter = 0;
 		for (i = 0; i < ysize; i++) {
 			buf += to_string(i) + ",";
 			for (j = 0; j < params; j++) {
 				buf += " " + to_string((long double)y[i][j]);
+			}
+			if (y_beats[0].size() && i == y_beats[0][b_iter]) {
+				buf += " beat";
+				b_iter++;
+			}
+			if (acc_beats.size() && i == acc_beats[acc_iter]) {
+				buf += " accobeat";
+				acc_iter++;
 			}
 			buf += ";\n";
 		}
@@ -1708,7 +1730,7 @@ void Raskell::set_buffer(t_symbol *s, int dest) {
 				std::copy(sample+i, sample+i+HOP_SIZE, samp); // convert float to double
 				perform(samp, HOP_SIZE, dest);
 			}
-			post("Done reading buffer. %d acco beats. %d y beats.", acc_beats.size(), y_beats[0].size());
+			post("Done reading buffer. %d ACC beats. %d Y beats.", acc_beats.size(), y_beats[0].size());
 		}
 		buffer_unlocksamples(b);
 	}
