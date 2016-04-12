@@ -2,7 +2,15 @@
 //
 // 2014-2016 Grigore Burloiu
 
-#define RV_VERSION 0.2
+#define RV_VERSION 0.3
+
+/*
+
+Version history:
+0.3 - added beat tracking module
+
+*/
+
 // TO DO: read in chunks
 // TO DO: goto h
 // TO DO: make separate classes for DTW and TEMPO MODELS
@@ -138,7 +146,6 @@ public:
 	float sensitivity; // tempo fluctuations
 	float elasticity; // tempo response amp.
 	float error; // tempo tracking error vs DTW path / beats
-	int master; // in case of conflict of position, who are we tracking? Acco or Solo?
 
 	t_uint16 runCount, maxRunCount, m_iter, m_ideal_iter, m_count, input_sel;
 	t_atom dump[50];

@@ -39,7 +39,3 @@
 // buffer destination
 #define B_SOLO 1
 #define B_ACCO 2
-
-// master tracker
-#define MA_SOLO 1
-#define MA_ACCO 2

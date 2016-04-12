@@ -283,13 +283,13 @@ Raskell::Raskell() {
 		chroma = new Chromagram(WINDOW_SIZE, SampleRate); 
 		chroma->setChromaCalculationInterval(WINDOW_SIZE);
 		acc_iter = b_iter = prev_h_beat = 0;
+		ref_tempo = 120;
 
 		l_buffer_reference = NULL;
 		score_name = live_name = "";
 		
 		features = CHROMA;
-		tempo_model = T_DEQ;
-		master = MA_SOLO;
+		tempo_model = T_PID;
 		samp = fftw_alloc_real(WINDOW_SIZE);
 						
 		if (features == MFCCS) {			
@@ -346,7 +346,7 @@ void Raskell::perform(double *in, long sampleframes, int dest) {
 
 	beat->processAudioFrame(in);
 	//if(beat->beatDueInCurrentFrame())
-		//post("beat! t= %f", beat->getCurrentTempoEstimate());
+	//	post("beat! t= %f", beat->getCurrentTempoEstimate());
 	
 	if(beat->beatDueInCurrentFrame()) { // beat detected
 		switch (dest) {
@@ -481,7 +481,6 @@ void Raskell::feats(t_uint16 argc) {
 					float diff = 0;
 					while (b_iter < y_beats[0].size() && acc_iter < acc_beats.size()) {
 						b_iter = update_beat_iter(b_iter, &y_beats[0], int(acc_beats[acc_iter]));
-						assert(b_iter);
 						if (b_iter)
 							y_beats[1][b_iter] = calc_beat_diff(y_beats[0][b_iter], 
 													y_beats[0][b_iter-1], acc_beats[acc_iter]);
@@ -638,9 +637,7 @@ void Raskell::input(long v) {
 	}
 	switch (input_sel) {
 		case 0 : post("input selection is: OFF"); break;
-		case IN_SCORE : post("input selection is: SCORE");			
-			if (ref_tempo)	beat->setTempo(ref_tempo);
-			break;
+		case IN_SCORE : post("input selection is: SCORE"); break;
 		case IN_LIVE : post("input selection is: LIVE"); break;
 		case OUT_IO : post("inputs OFF, ready to write history!"); break;
 	}
@@ -651,9 +648,9 @@ void Raskell::input(long v) {
 		iter = 0;
 		b_iter = 0;
 		acc_iter = 0;
-		if (ref_tempo)	beat->setTempo(ref_tempo);
-		//post ("reference tempo set at %.2f BPM", ref_tempo);
 	}
+	if (ref_tempo)	beat->setTempo(ref_tempo);
+	//post ("reference tempo set at %.2f BPM", ref_tempo);
 }
 
 void Raskell::gotomarker(long v) {
@@ -1075,7 +1072,7 @@ double Raskell::calc_tempo(int mode) {
 	if (t == 0) return 1;
 	int second = SampleRate / HOP_SIZE; // number of frames per second
 	static double last_tempo = 1;
-	double new_tempo;
+	double new_tempo = tempo;
 	static t_int16 last_beat = 1;
 	static double old_tempo = 1; // for ARZT model
 	// for DEQ model
@@ -1122,15 +1119,14 @@ double Raskell::calc_tempo(int mode) {
 				if (abs(error) < 20.f) //anti-windup
 					integral += error;
 				if (beat_due) {
-					// PID tempo model							
-					if(elast_beat == 1) post("update tempo 1");
-					else post ("%.2f", elast_beat);			
+					// PID tempo model		
 					new_tempo = (double)(history[t] - history[last_beat]) / (t - last_beat);
 					float derivate = (error - errors[0]) / (t - last_beat);
 					//post("err = %f // int = %f // der = %f", Kp*error, Ki*integral, Kd*derivate);
 					double boost = (Kp*error + Ki*integral + Kd * derivate) / ((double)(t - last_beat));
 					new_tempo += boost;
 					last_beat = t;
+					post("new tempo %f", new_tempo);
 				}
 			}
 			break;
@@ -1277,12 +1273,11 @@ void Raskell::increment_t() {
 	double beat_tempo = calc_beat_tempo();
 
 	static int waiting = 0;
-
 	// sensitivity to tempo fluctuations:
 	if (abs(error) > pow(1.f-sensitivity, 2)*100.f + abs(minerr)) {
-		if (abs(b_err[b_start][0]) > 15 && abs(tempo - beat_tempo) > 0.25) {
+		if (abs(b_err[b_start][0]) > 15 && abs(tempo_avg - beat_tempo) > 0.35) {
 			// DTW is way off, beat tracker takes over
-			post("big error! %f != %f", tempo, beat_tempo);
+			//post("big error! %f != %f", tempo_avg, beat_tempo);
 			waiting = fsize;
 		}
 		if (waiting) {
@@ -1290,8 +1285,8 @@ void Raskell::increment_t() {
 			calc = 2;
 		} else {
 			if (calc == 2) {
-		//		h_real = h;
-		//		post("moved H_real to H");
+				h_real = h;
+				post("moved H_real to H");
 			}
 			tempo = calc_tempo(tempo_model);	
 			calc = 1;
@@ -1305,13 +1300,13 @@ void Raskell::increment_t() {
 
 	if(waiting > 0) waiting--;
 
-	if (tempo > 0) {
+	if (tempo > 0.01) {
 		if (tempo < 3 && tempo > 0.33) {
 			outlet_float(max->out_tempo, tempo);
 			h_real += tempo;
 		} else {
 			post("OUT OF CONTROL tempo = %f", tempo);
-			tempo = 1;
+			tempo = beat_tempo;
 			waiting = fsize;
 			//h_real = h;
 			//h = h_real;
