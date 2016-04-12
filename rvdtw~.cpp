@@ -286,9 +286,10 @@ Raskell::Raskell() {
 
 		l_buffer_reference = NULL;
 		score_name = live_name = "";
-
+		
 		features = MFCCS;
 		tempo_model = T_DEQ;
+		master = MA_SOLO;
 		samp = fftw_alloc_real(WINDOW_SIZE);
 						
 		if (features == MFCCS) {			
@@ -393,6 +394,9 @@ void Raskell::perform(double *in, long sampleframes, int dest) {
 
 		case (B_ACCO) : // looking at accompaniment
 			acc_beats.push_back(acc_iter);
+			if (acc_beats.size() == 5)
+				ref_tempo = beat->getCurrentTempoEstimate();
+			//post("tempo %f at beat %d", beat->getCurrentTempoEstimate(), acc_iter);
 			break;
 		}	
 	}
@@ -644,6 +648,8 @@ void Raskell::input(long v) {
 		iter = 0;
 		b_iter = 0;
 		acc_iter = 0;
+		beat->setTempo(ref_tempo);
+		post ("reference tempo set at %.2f BPM", ref_tempo);
 	}
 }
 

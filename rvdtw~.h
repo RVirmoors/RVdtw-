@@ -6,6 +6,7 @@
 // TO DO: read in chunks
 // TO DO: goto h
 // TO DO: make separate classes for DTW and TEMPO MODELS
+// TO DO: linear interpolation of SEN between beats
 
 #include "ext.h"			// standard Max include, always required (except in Jitter)
 #include "ext_obex.h"		// required for "new" style objects
@@ -137,6 +138,7 @@ public:
 	float sensitivity; // tempo fluctuations
 	float elasticity; // tempo response amp.
 	float error; // tempo tracking error vs DTW path / beats
+	int master; // in case of conflict of position, who are we tracking? Acco or Solo?
 
 	t_uint16 runCount, maxRunCount, m_iter, m_ideal_iter, m_count, input_sel;
 	t_atom dump[50];
