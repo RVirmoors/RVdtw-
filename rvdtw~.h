@@ -166,7 +166,7 @@ public:
 	Chromagram *chroma;
 
 	//		beat tracking vars:
-	vector<float> acc_beats;
+	vector<vector<float> > acc_beats; // acc_beats[0][]: beats, acc_beats[1][]: tempo
 	vector<vector<float> > y_beats; // y_beats[0][]: beats, y_beats[1][]: diffs to acco
 	t_uint16 acc_iter, b_iter;
 	double prev_h_beat;

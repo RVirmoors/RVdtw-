@@ -114,6 +114,7 @@ void RVdtw_read(t_RVdtw *x, t_symbol *s) {
 
 void RVdtw_readacco(t_RVdtw *x, t_symbol *s) {
 	x->rv->acc_beats.clear();
+	x->rv->acc_beats.resize(2);
 	x->rv->acc_iter = 0;	
 	x->rv->beat->updateHopAndFrameSize(HOP_SIZE, HOP_SIZE*2);
 	atom v[1];
@@ -289,7 +290,7 @@ Raskell::Raskell() {
 		score_name = live_name = "";
 		
 		features = CHROMA;
-		tempo_model = T_PID;
+		tempo_model = T_DEQ;
 		samp = fftw_alloc_real(WINDOW_SIZE);
 						
 		if (features == MFCCS) {			
@@ -361,9 +362,9 @@ void Raskell::perform(double *in, long sampleframes, int dest) {
 				// check if live beat aligns with predicted beats
 				b_iter = update_beat_iter(b_iter, &y_beats[0], h_real);
 				diff_y = calc_beat_diff(h_real, prev_h_beat, y_beats[0][b_iter]);
-				if (acc_beats.size()) {
-					acc_iter = update_beat_iter(acc_iter, &acc_beats, h_real);
-					diff_acc = calc_beat_diff(h_real, prev_h_beat, acc_beats[acc_iter]);
+				if (acc_beats[0].size()) {
+					acc_iter = update_beat_iter(acc_iter, &acc_beats[0], h_real);
+					diff_acc = calc_beat_diff(h_real, prev_h_beat, acc_beats[0][acc_iter]);
 				} else 
 					diff_acc = VERY_BIG;				
 				prev_h_beat = h_real;
@@ -372,8 +373,7 @@ void Raskell::perform(double *in, long sampleframes, int dest) {
 					//min(abs(diff_y) - b_stdev, abs(diff_acc) - b_stdev);
 				//post("minerr %f ( %f vs %f ) y: %d acco: %d", minerr, abs(diff_y), abs(diff_acc), iter, acc_iter);
 				
-				if (minerr < 0)
-					ref_tempo = beat->getCurrentTempoEstimate();
+				ref_tempo = acc_beats[1][acc_iter];
 
 				minerr = 0;
 				int i = 0;
@@ -393,9 +393,8 @@ void Raskell::perform(double *in, long sampleframes, int dest) {
 			break;
 
 		case (B_ACCO) : // looking at accompaniment
-			acc_beats.push_back(acc_iter);
-			if (acc_beats.size() == 5)
-				ref_tempo = beat->getCurrentTempoEstimate();
+			acc_beats[0].push_back(acc_iter);
+			acc_beats[1].push_back(beat->getCurrentTempoEstimate());
 			//post("tempo %f at beat %d", beat->getCurrentTempoEstimate(), acc_iter);
 			break;
 		}	
@@ -474,18 +473,18 @@ void Raskell::feats(t_uint16 argc) {
 			iter++; //iterate thru Y
 			if (iter == ysize) {
 				post("SCORE data fully loaded: %i frames, %i markers, %i ACC beats, %i Y beats.", 
-					ysize, m_count, acc_beats.size(), y_beats[0].size()); 
-				if (acc_beats.size()) {
+					ysize, m_count, acc_beats[0].size(), y_beats[0].size()); 
+				if (acc_beats[0].size()) {
 					// compare Y beats & ACC beats
 					b_iter = acc_iter = 0;
 					float diff = 0;
-					while (b_iter < y_beats[0].size() && acc_iter < acc_beats.size()) {
-						b_iter = update_beat_iter(b_iter, &y_beats[0], int(acc_beats[acc_iter]));
+					while (b_iter < y_beats[0].size() && acc_iter < acc_beats[0].size()) {
+						b_iter = update_beat_iter(b_iter, &y_beats[0], int(acc_beats[0][acc_iter]));
 						if (b_iter)
 							y_beats[1][b_iter] = calc_beat_diff(y_beats[0][b_iter], 
-													y_beats[0][b_iter-1], acc_beats[acc_iter]);
+													y_beats[0][b_iter-1], acc_beats[0][acc_iter]);
 						else 
-							y_beats[1][b_iter] = y_beats[0][b_iter] - acc_beats[acc_iter];
+							y_beats[1][b_iter] = y_beats[0][b_iter] - acc_beats[0][acc_iter];
 						diff = (float)(y_beats[1][b_iter] + acc_iter * diff) / (acc_iter + 1); // CMA
 						acc_iter++;
 					}
@@ -1126,7 +1125,7 @@ double Raskell::calc_tempo(int mode) {
 					double boost = (Kp*error + Ki*integral + Kd * derivate) / ((double)(t - last_beat));
 					new_tempo += boost;
 					last_beat = t;
-					post("new tempo %f", new_tempo);
+					//post("new tempo %f", new_tempo);
 				}
 			}
 			break;
@@ -1271,14 +1270,17 @@ void Raskell::increment_t() {
 	error = (h - h_real);
 	static short calc = 0; // 0: insensitive, 1: DTW track, 2: beat track
 	double beat_tempo = calc_beat_tempo();
+	int beat_length = (acc_iter) ? acc_beats[0][acc_iter] - acc_beats[0][acc_iter-1] : fsize;
 
 	static int waiting = 0;
 	// sensitivity to tempo fluctuations:
 	if (abs(error) > pow(1.f-sensitivity, 2)*100.f + abs(minerr)) {
-		if (abs(b_err[b_start][0]) > 15 && abs(tempo_avg - beat_tempo) > 0.35) {
+		post ("waiting %i . tempo %f - %f beat_tempo", waiting, tempo_avg, beat_tempo);
+		//if (abs(b_err[b_start][0]) > 15 && abs(tempo_avg - beat_tempo) > 0.25) {
+		if (abs ( b_err[b_start][0] * (tempo_avg - beat_tempo) ) > 3 ) {
 			// DTW is way off, beat tracker takes over
-			//post("big error! %f != %f", tempo_avg, beat_tempo);
-			waiting = fsize;
+			post("big error! %f != %f", tempo_avg, beat_tempo);
+			waiting = (int)(fsize / beat_length) * beat_length;
 		}
 		if (waiting) {
 			tempo = beat_tempo;		
@@ -1307,7 +1309,7 @@ void Raskell::increment_t() {
 		} else {
 			post("OUT OF CONTROL tempo = %f", tempo);
 			tempo = beat_tempo;
-			waiting = fsize;
+			waiting = (int)(fsize / beat_length) * beat_length;
 			//h_real = h;
 			//h = h_real;
 			//h_mod = h%fsize;
@@ -1463,7 +1465,10 @@ void Raskell::file_open(char *name) {
 			sysfile_readtextfile(f_fh, (t_handle)f_data, 0, TEXT_NULL_TERMINATE);
 			//post("the file has %ld characters", size);
 			f_size = size;
-			if(input_sel != IN_LIVE) {
+
+			if(input_sel != IN_LIVE) {			
+				acc_beats.clear();
+				acc_beats.resize(2);
 				score_name = name;
 				// start reading SCORE frames				
 				// count # of feat's:
@@ -1535,9 +1540,13 @@ bool Raskell::read_line() {
 			y_beats[1].push_back(0);	// diff from acco beat (computed below in feats())
 			//post("new Y beat at %d", iter);
 		}
-		if(strstr(buf, "accobeat")) {
-			acc_beats.push_back(iter);  // beat pos
-			//post("new ACC beat at %d", iter);
+		char* beat_temp = strstr(buf, "accobeat");
+		if(beat_temp) {
+			acc_beats[0].push_back(iter);  // beat pos
+			double temp;
+			sscanf(beat_temp, "accobeat %lf", &temp);
+			acc_beats[1].push_back(temp);  // beat pos
+			//post("new ACC beat at %d tempo %lf", iter, temp);
 		}
 		feats(params); 
 
@@ -1632,8 +1641,8 @@ void Raskell::do_write(t_symbol *s) {
 				buf += " beat";
 				b_iter++;
 			}
-			if (acc_beats.size() && i == acc_beats[acc_iter]) {
-				buf += " accobeat";
+			if (acc_beats.size() && i == acc_beats[0][acc_iter]) {
+				buf += " accobeat " + to_string((long double)acc_beats[1][acc_iter]);
 				acc_iter++;
 			}
 			buf += ";\n";
@@ -1725,7 +1734,7 @@ void Raskell::set_buffer(t_symbol *s, int dest) {
 				std::copy(sample+i, sample+i+HOP_SIZE, samp); // convert float to double
 				perform(samp, HOP_SIZE, dest);
 			}
-			post("Done reading buffer. %d ACC beats. %d Y beats.", acc_beats.size(), y_beats[0].size());
+			post("Done reading buffer. %d ACC beats. %d Y beats.", acc_beats[0].size(), y_beats[0].size());
 		}
 		buffer_unlocksamples(b);
 	}
