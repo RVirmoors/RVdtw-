@@ -352,7 +352,7 @@ void Raskell::perform(double *in, long sampleframes, int dest) {
 	if(beat->beatDueInCurrentFrame()) { // beat detected
 		switch (dest) {
 		case (B_SOLO) : 
-			if (input_sel != IN_LIVE) { // looking at reference
+			if (input_sel != IN_LIVE && iter) { // looking at reference
 				y_beats[0].push_back(iter);  // beat pos
 				y_beats[1].push_back(0);	// diff from acco beat (computed below in feats())
 
@@ -393,8 +393,10 @@ void Raskell::perform(double *in, long sampleframes, int dest) {
 			break;
 
 		case (B_ACCO) : // looking at accompaniment
-			acc_beats[0].push_back(acc_iter);
-			acc_beats[1].push_back(beat->getCurrentTempoEstimate());
+			if (acc_iter) {
+				acc_beats[0].push_back(acc_iter);
+				acc_beats[1].push_back(beat->getCurrentTempoEstimate());
+			}
 			//post("tempo %f at beat %d", beat->getCurrentTempoEstimate(), acc_iter);
 			break;
 		}	
@@ -1276,8 +1278,7 @@ void Raskell::increment_t() {
 	// sensitivity to tempo fluctuations:
 	if (abs(error) > pow(1.f-sensitivity, 2)*100.f + abs(minerr)) {
 		post ("waiting %i . tempo %f - %f beat_tempo", waiting, tempo_avg, beat_tempo);
-		//if (abs(b_err[b_start][0]) > 15 && abs(tempo_avg - beat_tempo) > 0.25) {
-		if (abs ( b_err[b_start][0] * (tempo_avg - beat_tempo) ) > 3 ) {
+		if (abs(b_err[b_start][0]) > 15 && abs(tempo_avg - beat_tempo) > 0.15) {
 			// DTW is way off, beat tracker takes over
 			post("big error! %f != %f", tempo_avg, beat_tempo);
 			waiting = (int)(fsize / beat_length) * beat_length;
@@ -1637,11 +1638,11 @@ void Raskell::do_write(t_symbol *s) {
 			for (j = 0; j < params; j++) {
 				buf += " " + to_string((long double)y[i][j]);
 			}
-			if (y_beats[0].size() && i == y_beats[0][b_iter]) {
+			if (y_beats[0].size() && i >= y_beats[0][b_iter]) {
 				buf += " beat";
 				b_iter++;
 			}
-			if (acc_beats.size() && i == acc_beats[0][acc_iter]) {
+			if (acc_beats[0].size() && i >= acc_beats[0][acc_iter]) {
 				buf += " accobeat " + to_string((long double)acc_beats[1][acc_iter]);
 				acc_iter++;
 			}
