@@ -216,7 +216,6 @@ void RVdtw_dsp(t_RVdtw *x, t_signal **sp, short *count)
 void RVdtw_dsp64(t_RVdtw *x, t_object *dsp64, short *count, double samplerate, long maxvectorsize, long flags)
 {
 	//post("my sample rate is: %f", samplerate);
-	x->rv->hop = maxvectorsize;
 	x->rv->beat->updateHopAndFrameSize(maxvectorsize, maxvectorsize*2);
 	object_method(dsp64, gensym("dsp_add64"), x, RVdtw_perform64, 0, NULL);
 }
@@ -269,6 +268,8 @@ Raskell::Raskell() {
 		tempos.clear(); errors.clear();
 		y_beats.clear();
 		y_beats.resize(2);
+		acc_beats.clear();
+		acc_beats.resize(2);
 
 		mid_weight = MID;
 		top_weight = SIDE;
@@ -278,7 +279,7 @@ Raskell::Raskell() {
 
 		SampleRate = sys_getsr();
 		active_frames = WINDOW_SIZE / HOP_SIZE;
-		hop = HOP_SIZE;
+		dsp_frame_size = 64;
 
 		beat = new BTrack();
 		chroma = new Chromagram(WINDOW_SIZE, SampleRate); 
@@ -290,7 +291,7 @@ Raskell::Raskell() {
 		score_name = live_name = "";
 		
 		features = CHROMA;
-		tempo_model = T_DEQ;
+		tempo_model = T_PID;
 		samp = fftw_alloc_real(WINDOW_SIZE);
 						
 		if (features == MFCCS) {			
@@ -307,6 +308,7 @@ Raskell::Raskell() {
 			params = m = 12;
 			tfeat = fftw_alloc_real(m);
 		}
+
 		dspinit();
 		//post ("RV object created");
 }
@@ -343,7 +345,17 @@ void Raskell::init(t_symbol *s,  long argc, t_atom *argv) {
 		srand(744);
 }
 
+bool Raskell::zeros(double *in, long sampleframes) {
+	for (long i = 0; i < sampleframes; i++) {
+		if (in[i]) return false;
+	}
+	return true;
+}
+
 void Raskell::perform(double *in, long sampleframes, int dest) {
+
+	if (zeros(in, sampleframes)) 
+		return;
 
 	beat->processAudioFrame(in);
 	//if(beat->beatDueInCurrentFrame())
@@ -368,7 +380,7 @@ void Raskell::perform(double *in, long sampleframes, int dest) {
 				} else 
 					diff_acc = VERY_BIG;				
 				prev_h_beat = h_real;
-				minerr = abs(diff_acc - y_beats[1][b_iter]) - b_stdev;
+				//minerr = abs(diff_acc - y_beats[1][b_iter]) - b_stdev;
 					//diff_y - diff_acc;
 					//min(abs(diff_y) - b_stdev, abs(diff_acc) - b_stdev);
 				//post("minerr %f ( %f vs %f ) y: %d acco: %d", minerr, abs(diff_y), abs(diff_acc), iter, acc_iter);
@@ -401,15 +413,19 @@ void Raskell::perform(double *in, long sampleframes, int dest) {
 			break;
 		}	
 	}
-	
-	if ((dest == B_ACCO || (h <= ysize) && (iter < ysize)) && in[0]) {
+
+	if (dest == B_ACCO || (h <= ysize) && (iter < ysize)) {
+		
+		//post("in %f", in[0]);
 		std::vector<double> chr;
 		t_uint32 i, j;
+		//post("adding %d samples to frames of %d size", sampleframes, WINDOW_SIZE);
 		for (i=0; i < sampleframes; i++) {
 			add_sample_to_frames(in[i]);
 		}
 		for(i=0; i<active_frames; i++) {
 			if(frame_index[i]==0) {		// if frame is full, then compute feature vector
+				//post("frame is full # %d. first sample: %f", iter, frame[i][0]);
 				if (dest != B_ACCO) {
 					switch (features) {
 						case (MFCCS) :	
@@ -1136,7 +1152,7 @@ double Raskell::calc_tempo(int mode) {
 			// first pivot is within L steps from path origin
 			// 2nd pivot is at least K steps away from 1st, AND minimizes SUM(var_tempo[pivots])
 			if (t < bsize || h < bsize)
-				new_tempo = 1;// history[t] - history[t-1]; // not yet active
+				new_tempo = history[t] - history[t-1]; // not yet active
 			else {				
 				pivot1_t = pivot1_h = pivot2_t = pivot2_h = 0;
 				pivot1_tp = pivot2_tp = 1;
@@ -1638,11 +1654,11 @@ void Raskell::do_write(t_symbol *s) {
 			for (j = 0; j < params; j++) {
 				buf += " " + to_string((long double)y[i][j]);
 			}
-			if (y_beats[0].size() && i >= y_beats[0][b_iter]) {
+			if (y_beats[0].size() && i == y_beats[0][b_iter]) {
 				buf += " beat";
 				b_iter++;
 			}
-			if (acc_beats[0].size() && i >= acc_beats[0][acc_iter]) {
+			if (acc_beats[0].size() && i == acc_beats[0][acc_iter]) {
 				buf += " accobeat " + to_string((long double)acc_beats[1][acc_iter]);
 				acc_iter++;
 			}
@@ -1725,14 +1741,17 @@ void Raskell::set_buffer(t_symbol *s, int dest) {
 			score_size((long)(frames / HOP_SIZE - active_frames + 1));
 			iter = 1;
 			marker(NULL); // add marker at start (position 1)
+			iter = 0;
 		}
 
 		float* sample = buffer_locksamples(b);
 
 		if (sample) {
 			double samp[HOP_SIZE];
+			beat->updateHopAndFrameSize(HOP_SIZE, HOP_SIZE*2);
 			for (long i = 0; i < frames-HOP_SIZE; i += HOP_SIZE) {			
 				std::copy(sample+i, sample+i+HOP_SIZE, samp); // convert float to double
+				//post("sample[%d] %f , double %f", i, sample[i], samp[0]);
 				perform(samp, HOP_SIZE, dest);
 			}
 			post("Done reading buffer. %d ACC beats. %d Y beats.", acc_beats[0].size(), y_beats[0].size());

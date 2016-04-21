@@ -151,7 +151,7 @@ public:
 	t_atom dump[50];
 
 	//		DSP vars:
-	long hop;
+	long dsp_frame_size;
 	t_uint16 active_frames;
 	vector<t_uint16> frame_index;
 	float SampleRate;
@@ -199,6 +199,7 @@ public:
 	void gotoms(long v);
 
 	// feat extraction methods:
+	bool zeros(double *in, long sampleframes);
 	void dspinit();
 	void fillBanks();
 	void hamming(int windowLength);
