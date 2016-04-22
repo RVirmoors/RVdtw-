@@ -815,6 +815,7 @@ void Raskell::distance(t_uint16 i, t_uint16 j) {
 		//post("WARNING input is zero, t=%i h=%i", i, j);
 	} else for (k = 0; k < params; k++) {
 		total = total + ((x[imod][k] - y[j][k]) * (x[imod][k] - y[j][k])); // distance computation 
+		//total = total + abs(x[imod][k] - y[j][k]); // L1 distance computation 
 	}
 	if (total < 0.0001)
 		total = 0;
