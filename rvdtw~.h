@@ -15,6 +15,7 @@ Version history:
 // TO DO: goto h
 // TO DO: make separate classes for DTW and TEMPO MODELS
 // TO DO: linear interpolation of SEN between beats
+// TO DO: compute CENS from Chroma?, a la http://resources.mpi-inf.mpg.de/MIR/chromatoolbox/2005_MuellerKurthClausen_AudioMatching_ISMIR.pdf
 
 #include "ext.h"			// standard Max include, always required (except in Jitter)
 #include "ext_obex.h"		// required for "new" style objects
@@ -224,6 +225,7 @@ public:
 	int calc_beat_diff(double cur_beat, double prev_beat, double ref_beat);
 	t_uint16 update_beat_iter(t_uint16 beat_iter, vector<float> *beat_vector, double ref_beat);
 	double calc_beat_tempo();
+	short tempo_mode; // 0: insensitive, 1: DTW track, 2: beat track
 
 	// file input / output methods:
 	bool do_read(t_symbol *s);

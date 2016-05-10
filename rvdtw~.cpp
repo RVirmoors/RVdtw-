@@ -590,6 +590,7 @@ void Raskell::reset() {
 	integral = t_passed = last_arzt = 0;	
 	tempos.clear(); errors.clear();
 	acc_iter = b_iter = prev_h_beat = 0;
+	tempo_mode = 0;
 	
 	short i;
 
@@ -1063,7 +1064,7 @@ void Raskell::dtw_back() {
 		//if (diff < 0)
 		//	b_err[b_start][0] -= diff / 2;
 		
-		//if (!(t % 90)) {
+		if (tempo_mode != 2) { // if beat-tracker doesn't have control
 			if (b_err[b_start][0] > 5) { // gotta go DOWN
 				if (bot_weight < 20) bot_weight += abs(b_err[b_start][0]) / 50;
 				//post("bot w = %f", bot_weight);
@@ -1075,7 +1076,7 @@ void Raskell::dtw_back() {
 			else {
 				top_weight = bot_weight = SIDE;
 			}
-		//}
+		}
 		
 		// output certainty
 		atom_setsym(dump, gensym("b_err"));
@@ -1287,7 +1288,6 @@ double Raskell::calc_tempo(int mode) {
 
 void Raskell::increment_t() {
 	error = (h - h_real);
-	static short calc = 0; // 0: insensitive, 1: DTW track, 2: beat track
 	double beat_tempo = calc_beat_tempo();
 	int beat_length = (acc_iter) ? acc_beats[0][acc_iter] - acc_beats[0][acc_iter-1] : fsize;
 
@@ -1302,21 +1302,20 @@ void Raskell::increment_t() {
 		}
 		if (waiting) {
 			tempo = beat_tempo;		
-			calc = 2;
+			tempo_mode = 2;
 		} else {
-			if (calc == 2) {
+			if (tempo_mode == 2) {
 				h_real = h;
 				post("moved H_real to H");
 			}
 			tempo = calc_tempo(tempo_model);	
-			calc = 1;
+			tempo_mode = 1;
 		}
 	}		
-	else if (abs(error) <= 1 && calc && t > 40) {
+	else if (abs(error) <= 1 && tempo_mode && t > 40) {
 		tempo = b_err[(b_start-40+bsize)%bsize][3];
-		calc = 0;
+		tempo_mode = 0;
 	}
-	
 
 	if(waiting > 0) waiting--;
 
@@ -1326,7 +1325,8 @@ void Raskell::increment_t() {
 			h_real += tempo;
 		} else {
 			post("OUT OF CONTROL tempo = %f", tempo);
-			tempo = beat_tempo;
+			tempo = beat_tempo;			
+			h_real += tempo;
 			waiting = (int)(fsize / beat_length) * beat_length;
 			//h_real = h;
 			//h = h_real;
@@ -1340,7 +1340,7 @@ void Raskell::increment_t() {
 		// output real H (scaled)
 		atom_setfloat(dump+2, h_real / ysize);
 		// output active tempo calculation toggle
-		atom_setlong(dump+3, calc);
+		atom_setlong(dump+3, tempo_mode);
 		outlet_list(max->out_dump, 0L, 4, dump);
 	} 
 	t++;
