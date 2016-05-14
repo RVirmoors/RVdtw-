@@ -1,12 +1,11 @@
 # RVdtw-
-An online-DTW based automatic alignment external for Max/MSP
+An online-DTW based automatic alignment external for Max/MSP. Full documentation coming soon!
 
 #################
-## Libraries used
+### Libraries used
 #################
 
 BTrack
 Chroma
 fftw
-Gist
 libsamplerate
