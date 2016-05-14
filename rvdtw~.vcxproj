@@ -93,7 +93,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <TargetExt>.mxe</TargetExt>
-    <IncludePath>$(ProjectDir)\fftw\32;$(ProjectDir)\Chroma\src;$(ProjectDir)\Gist\src;$(ProjectDir);$(ProjectDir)\BTrack\src;$(ProjectDir)\libsamplerate;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)\fftw\32;$(ProjectDir)\Chroma\src;$(ProjectDir)\Gist\src;$(ProjectDir);$(ProjectDir)\BTrack\src;$(ProjectDir)\libsamplerate;$(ProjectDir)\oDTW\;$(IncludePath)</IncludePath>
     <OutDir>$(C74SUPPORT)..\sdk-build\</OutDir>
     <SourcePath>$(VCInstallDir)atlmfc\src\mfc;$(VCInstallDir)atlmfc\src\mfcm;$(VCInstallDir)atlmfc\src\atl;$(VCInstallDir)crt\src</SourcePath>
   </PropertyGroup>
@@ -286,10 +286,12 @@
     <ClCompile Include="Gist\src\mfcc\MFCC.cpp" />
     <ClCompile Include="Gist\src\onset-detection-functions\OnsetDetectionFunction.cpp" />
     <ClCompile Include="Gist\src\pitch\Yin.cpp" />
+    <ClCompile Include="oDTW\oDTW.cpp" />
     <ClCompile Include="rvdtw~.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="defines.h" />
+    <ClInclude Include="oDTW\oDTW.h" />
     <ClInclude Include="rvdtw~.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

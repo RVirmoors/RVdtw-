@@ -28,6 +28,7 @@ Version history:
 //#include "gist.h"
 #include "chromagram.h"
 #include "BTrack.h"
+#include "oDTW.h"
 
 #include <algorithm>
 #include <cstdio>
@@ -36,6 +37,8 @@ Version history:
 #include <vector>
 #include <deque>
 #include <sstream>
+
+
 
 // FFT params
 #define	fsize 128//32 // DTW window length (# of input frames)
@@ -128,14 +131,15 @@ public:
 	vector<t_uint16> history, b_path;
 	vector<vector<double> > b_err;
 	vector<vector<double> > Dist, dtw, b_dtw, b_move;
-	deque<t_uint16> Deque;
 	t_uint16 b_start, bh_start;
 	double b_avgerr;
 	float mid_weight, top_weight, bot_weight;
 	bool follow;
-	int features; // MFCCs or chroma vectors
 
+	int features; // MFCCs or chroma vectors
 	vector<vector<double> > markers;
+
+	deque<t_uint16> Deque;
 	double tempo, tempotempo, tempo_avg;
 	int tempo_model;
 	double pivot1_t, pivot1_h, pivot1_tp, pivot2_t, pivot2_h, pivot2_tp;
@@ -207,6 +211,7 @@ public:
 	void add_sample_to_frames(double sample);
 	void reset_feat();
 	void calc_mfcc(t_uint16 frame_to_fft);
+	double compress(double value, bool active);
 
 	// DTW methods:
 	void init_dtw();
@@ -214,14 +219,15 @@ public:
 	t_uint16 get_inc();
 	void calc_dtw(t_uint16 i, t_uint16 j);
 	void dtw_process();
-	double compress(double value, bool active);
-	double calc_tempo(int mode);
 	void increment_t();
 	void increment_h();
 	bool decrease_h();
 	void dtw_back();
 
-	// beat methods
+	// tempo model methods:
+	double calc_tempo(int mode);
+
+	// beat methods:
 	int calc_beat_diff(double cur_beat, double prev_beat, double ref_beat);
 	t_uint16 update_beat_iter(t_uint16 beat_iter, vector<float> *beat_vector, double ref_beat);
 	double calc_beat_tempo();
