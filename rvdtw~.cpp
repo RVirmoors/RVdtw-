@@ -414,7 +414,7 @@ void Raskell::perform(double *in, long sampleframes, int dest) {
 		}	
 	}
 
-	if (dest == B_ACCO || (h <= ysize) && (iter < ysize)) {
+	if (dest == B_ACCO || ((h <= ysize) && (iter < ysize))) {
 		
 		//post("in %f", in[0]);
 		std::vector<double> chr;

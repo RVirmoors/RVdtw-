@@ -33,7 +33,9 @@ Version history:
 #include <algorithm>
 #include <cstdio>
 #include <cstdlib>
+#include <cmath>
 #include <iostream>
+#include <string>
 #include <vector>
 #include <deque>
 #include <sstream>
