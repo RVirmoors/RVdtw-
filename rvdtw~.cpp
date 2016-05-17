@@ -1306,6 +1306,7 @@ void Raskell::increment_t() {
 		} else {
 			if (tempo_mode == 2) {
 				h_real = h;
+				h_real += tempo;
 				post("moved H_real to H");
 			}
 			tempo = calc_tempo(tempo_model);	
