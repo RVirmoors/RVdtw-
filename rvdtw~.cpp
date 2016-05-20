@@ -537,7 +537,7 @@ void Raskell::feats(t_uint16 argc) {
 }
 
 void Raskell::score_size(long v) {
-	long i, j;
+	long i;
 	if ((v < MAXLENGTH) && (v > 0)) {
 		ysize = v;
 		// we have ysize -> MEMORY ALLOCATION

@@ -22,4 +22,4 @@ make CXXFLAGS="-arch i386 -arch x86_64" CFLAGS="-arch i386 -arch x86_64" LDFLAGS
 
 If you get an error related to "Carbon.h", one way to get rid of it is to simply comment out the #include in that specific .c file
 
-Once you've got these 2 libraries install, you can go ahead and compile the XCode project for both 32b and 64b targets.
+Once you've got these 2 libraries installed, you can go ahead and compile the Xcode project for both 32b and 64b targets.
