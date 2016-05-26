@@ -41,10 +41,10 @@ public:
 	bool processLiveFV(double *tfeat);
 
 	// add a Marker to the Score ref.
-	void addMarkerToScore();
+	void addMarkerToScore(unsigned int frame);
 
 	// add a Marker to the Live target (should be used for testing only)
-	void addMarkerToLive();
+	void addMarkerToLive(unsigned int frame);
     
     // get frame number for a certain (score) marker
     unsigned int getMarkerFrame(long here);
@@ -79,7 +79,7 @@ private:
 	// internal vars
 	int fsize, bsize;
 	long ysize;	
-	unsigned int params, t, t_mod, h, h_mod, previous, iter;
+	unsigned int params, t, t_mod, h, h_mod, previous;
 	vector<vector<double> > x, y;
 	vector<unsigned int> history, b_path;
 	vector<vector<double> > b_err;
@@ -87,7 +87,6 @@ private:
 	unsigned int b_start, bh_start;
 	double b_avgerr;
 	float mid_weight, top_weight, bot_weight;
-	bool follow;
 
 	vector<vector<double> > markers;
 	unsigned int runCount, maxRunCount, m_iter, m_ideal_iter, m_count;

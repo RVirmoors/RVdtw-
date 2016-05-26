@@ -252,30 +252,27 @@ void RVdtw_perform64(t_RVdtw *x, t_object *dsp64, double **ins, long numins, dou
 		
 
 Raskell::Raskell() {	
-		ysize = t = h = h_real = runCount = iter = m_iter = m_ideal_iter = t_mod = h_mod = 0; // current position for online DTW: (t,h)
-		b_avgerr = b_start = bh_start = 0;
+		//ysize = t = h = h_real = runCount = iter = m_iter = m_ideal_iter = t_mod = h_mod = 0; // current position for online DTW: (t,h)
+		//b_avgerr = b_start = bh_start = 0;
 		tempo = tempo_avg = 1;
 		tempotempo = 0;
-		m_count = 0; // one marker is mandatory (to start)
-		previous = 0; // 0 = none; 1 = Row; 2 = Column; 3 = Both
-		input_sel = IN_SCORE; // 1 = SCORE; 2 = LIVE; 0 = closed		
+//		m_count = 0; // one marker is mandatory (to start)
+//		previous = 0; // 0 = none; 1 = Row; 2 = Column; 3 = Both
+		input_sel = IN_SCORE; // 1 = SCORE; 2 = LIVE; 0 = closed
 		follow = true;
 		sensitivity = SEN; // sens. to tempo fluctuations
 		elasticity = ELA;
+    
 		elast_beat = 1;
-		beat_due = false;
-		integral = t_passed = last_arzt = 0;	
+        beat_due = false;
+        acc_iter = b_iter = prev_h_beat = iter = 0;
+        ref_tempo = 120;
+		integral = t_passed = last_arzt = 0;
 		tempos.clear(); errors.clear();
 		y_beats.clear();
 		y_beats.resize(2);
 		acc_beats.clear();
 		acc_beats.resize(2);
-
-		mid_weight = MID;
-		top_weight = SIDE;
-		bot_weight = SIDE;
-
-		maxRunCount = MAX_RUN; // tempo between 1/x and x
 
 		SampleRate = sys_getsr();
 		active_frames = WINDOW_SIZE / HOP_SIZE;
@@ -284,8 +281,7 @@ Raskell::Raskell() {
 		beat = new BTrack();
 		chroma = new Chromagram(WINDOW_SIZE, SampleRate); 
 		chroma->setChromaCalculationInterval(WINDOW_SIZE);
-		acc_iter = b_iter = prev_h_beat = 0;
-		ref_tempo = 120;
+        warp = new oDTW();
 
 		l_buffer_reference = NULL;
 		score_name = live_name = "";
@@ -523,7 +519,9 @@ void Raskell::feats(t_uint16 argc) {
 			// build X matrix (online)
 			for (i=0; i<argc; i++) {
 				x[t%bsize][i] = tfeat[i];
-			}		
+			}
+            
+            // TODO: if (!follow), then go diagonally
 
 			if (t == 0)//xsize-1)  // is the window full?
 				init_dtw();
@@ -559,10 +557,10 @@ void Raskell::score_size(long v) {
 void Raskell::marker(t_symbol * s) {
 	// add new marker
 	if ((input_sel == IN_SCORE) && ysize) {
-        warp->addMarkerToScore();
+        warp->addMarkerToScore(iter);
 	}
     else if (input_sel == IN_LIVE) {
-        warp->addMarkerToLive();
+        warp->addMarkerToLive(iter);
         //post("Marker (ideal) entered at position %i", iter);
 	}
 }
@@ -1515,8 +1513,7 @@ void Raskell::set_buffer(t_symbol *s, int dest) {
 		post("Buffer is %d samples long", frames);
 		if (dest == B_SOLO && input_sel == IN_SCORE) {// make new score
 			score_size((long)(frames / HOP_SIZE - active_frames + 1));
-			iter = 1;
-			marker(NULL); // add marker at start (position 1)
+			warp->addMarkerToScore(1); // add marker at start (position 1)
 			iter = 0;
 		}
 

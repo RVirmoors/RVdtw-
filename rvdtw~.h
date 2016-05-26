@@ -112,6 +112,7 @@ public:
 	// internal vars:
 	long ysize;
 	//t_uint16 t, t_mod, h, h_mod, previous, iter;
+    t_uint16 iter;
 	double h_real;
 	//vector<vector<t_atom_float> > x, y;
 	//vector<t_uint16> history, b_path;
@@ -120,7 +121,7 @@ public:
 	//t_uint16 b_start, bh_start;
 	//double b_avgerr;
 	//float mid_weight, top_weight, bot_weight;
-	//bool follow;
+	bool follow;
 
     unsigned int params;    // number of params in feature vectors
 	unsigned int features;  // MFCCs or chroma vectors

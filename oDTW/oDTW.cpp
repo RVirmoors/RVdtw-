@@ -7,7 +7,18 @@ oDTW::oDTW(int windowSize_, int backWindowSize_, bool backActive_, unsigned int 
 		back_active(backActive_),
         params(params_)
 {
+    ysize = t = h = runCount = m_iter = m_ideal_iter = t_mod = h_mod = 0; // current position for online DTW: (t,h)
+    b_avgerr = b_start = bh_start = 0; // backwards DTW vars
+    
+    m_count = 0; // one marker is mandatory (to start)
+    previous = 0; // 0 = none; 1 = Row; 2 = Column; 3 = Both
 
+    mid_weight = MID;
+    top_weight = SIDE;
+    bot_weight = SIDE;
+    
+    maxRunCount = MAX_RUN; // tempo between 1/x and x
+    
 }
 
 
@@ -49,19 +60,24 @@ bool oDTW::processLiveFV(double *tfeat) {
     
 }
 
-void oDTW::addMarkerToScore() {
-    markers[m_iter][M_SCORED] = iter; // new marker at position iter
+void oDTW::addMarkerToScore(unsigned int frame) {
+    markers[m_iter][M_SCORED] = frame;
     m_count++;
     m_iter++;
 }
 
-void oDTW::addMarkerToLive() {
-    markers[m_ideal_iter][M_IDEAL] = iter;
+void oDTW::addMarkerToLive(unsigned int frame) {
+    markers[m_ideal_iter][M_IDEAL] = frame;
     m_ideal_iter++;
 }
 
+unsigned int oDTW::getMarkerFrame(long here) {
+    return markers[here][M_SCORED];
+}
+
+
 void oDTW::start() {
-    t = t_mod = h = h_mod = runCount = iter = m_iter = m_ideal_iter = 0; // current position for online DTW: (t,h)
+    t = t_mod = h = h_mod = runCount = m_iter = m_ideal_iter = 0; // current position for online DTW: (t,h)
     b_avgerr = b_start = bh_start = 0;
     previous = 0; // 0 = none; 1 = Row; 2 = Column; 3 = Both
     top_weight = bot_weight = SIDE;
@@ -168,9 +184,7 @@ void oDTW::distance(unsigned int i, unsigned int j) {
     //post("Dist[%i][%i] = %f", imod, jmod, total);
 }
 
-unsigned int oDTW::get_inc() {
-    if (!follow) return NEW_BOTH; // if alignment is OFF, just go diagonally
-    
+unsigned int oDTW::get_inc() {    
     // helper function for online DTW, choose Row (h) / Column (t) incrementation
     unsigned int i, next = 0;
     unsigned int tmin1 = (t_mod+fsize-1) % fsize;
