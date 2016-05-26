@@ -1,12 +1,24 @@
 #pragma once
 
-#include "ext.h"			// standard Max include, always required (except in Jitter)
-#include "ext_obex.h"		// required for "new" style objects
-#include "z_dsp.h"			// required for MSP objects
-#include "ext_buffer.h"		// MSP buffer
 #include "defines.h"		// int defines
 
 #include <vector>
+
+
+// DTW params
+#define	FSIZE 128//32 // DTW window length (# of input frames)
+#define BSIZE 512//128 // backwards DTW win length; should be larger than fsize
+
+#define MAXLENGTH 500000 //maximum input file length (# of frames)
+#define VERY_BIG  (1e10)
+#define MAX_RUN 64// 3 //64//50000    minimum 4; should not surpass fsize
+#define ALPHA 1
+#define MID 0.5 //0.5; //1.9; //1.5
+#define SIDE 1
+#define SEN 1 // 0.9 // 0.98//1
+#define ELA 1 // 1
+
+
 
 using namespace std;
 
@@ -14,47 +26,51 @@ class oDTW
 {
 public:
 	// constructor & destructor
-	oDTW(int windowSize_ = 128, int backWindowSize_ = 32, bool backActive_ = true);
+	oDTW(int windowSize_ = FSIZE, int backWindowSize_ = BSIZE, bool backActive_ = true, unsigned int params_ = 12);
 	~oDTW();
 
 	// set Score (reference) size (number of FV frames). 
 	//		(any previously existing data in the internal vars is removed.)
-	void setScoreSize(long v);
+    // returns # of params if succeeded, 0 if wrong/missing length v.
+	unsigned int setScoreSize(long v);
 
 	// add a Score (reference) feature vector
 	void processScoreFV(double *tfeat);
 
-	// add a Live (target) feature vector
-	void processLiveFV(double *tfeat);
+	// add a Live (target) feature vector. Returns TRUE if running, FALSE if end reached.
+	bool processLiveFV(double *tfeat);
 
 	// add a Marker to the Score ref.
 	void addMarkerToScore();
 
-	// add a Marker to the Live target
+	// add a Marker to the Live target (should be used for testing only)
 	void addMarkerToLive();
+    
+    // get frame number for a certain (score) marker
+    unsigned int getMarkerFrame(long here);
 
 	// empty all the internal vars, except the Score, and point back to the start.
 	void start();
 
 	// get current live time T (in frames)
-	t_uint16 getT();
+	unsigned int getT();
 
 	// get current reference time H
-	t_uint16 getH();
+	unsigned int getH();
 
 	// set new reference time. Use with caution - causes the system to effectively jump in time!
-	t_uint16 setH();
+	void setH(unsigned int to_h);
 
 	// get historic H value
-	t_uint16 getHistory(t_uint16 t_);
+	unsigned int getHistory(unsigned int from_t);
 
 private:
 	// internal methods
 	void init_dtw();
-	void distance(t_uint16 i, t_uint16 j);	
-	t_uint16 get_inc();
-	void calc_dtw(t_uint16 i, t_uint16 j);
-	void dtw_process();
+	void distance(unsigned int i, unsigned int j);	
+	unsigned int get_inc();
+	void calc_dtw(unsigned int i, unsigned int j);
+	bool dtw_process();
 	void increment_t();
 	void increment_h();
 	bool decrease_h();
@@ -63,19 +79,18 @@ private:
 	// internal vars
 	int fsize, bsize;
 	long ysize;	
-	t_uint16 params, t, t_mod, h, h_mod, previous, iter;
-	vector<vector<t_atom_float> > x, y; 
-	vector<t_uint16> history, b_path;
+	unsigned int params, t, t_mod, h, h_mod, previous, iter;
+	vector<vector<double> > x, y;
+	vector<unsigned int> history, b_path;
 	vector<vector<double> > b_err;
 	vector<vector<double> > Dist, dtw, b_dtw, b_move;
-	t_uint16 b_start, bh_start;
+	unsigned int b_start, bh_start;
 	double b_avgerr;
 	float mid_weight, top_weight, bot_weight;
 	bool follow;
 
 	vector<vector<double> > markers;
-	t_uint16 runCount, maxRunCount, m_iter, m_ideal_iter, m_count, input_sel;
-	t_atom dump[50];
+	unsigned int runCount, maxRunCount, m_iter, m_ideal_iter, m_count;
 
 	bool back_active;
 };

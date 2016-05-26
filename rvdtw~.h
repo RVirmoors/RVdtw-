@@ -12,10 +12,8 @@ Version history:
 */
 
 // TO DO: read in chunks
-// TO DO: goto h
-// TO DO: make separate classes for DTW and TEMPO MODELS
-// TO DO: linear interpolation of SEN between beats
-// TO DO: compute CENS from Chroma?, a la http://resources.mpi-inf.mpg.de/MIR/chromatoolbox/2005_MuellerKurthClausen_AudioMatching_ISMIR.pdf
+// TO DO: make separate class for TEMPO MODELS
+// TO DO: linear interpolation of SEN between beats ?
 
 #include "ext.h"			// standard Max include, always required (except in Jitter)
 #include "ext_obex.h"		// required for "new" style objects
@@ -43,23 +41,9 @@ Version history:
 
 
 // FFT params
-#define	fsize 128//32 // DTW window length (# of input frames)
-#define bsize 512//128 // backwards DTW win length; should be larger than fsize
 #define WINDOW_SIZE 2048
 #define HOP_SIZE 512
 
-
-#define CLASSIC 0
-
-// DTW params
-#define MAXLENGTH 500000 //maximum input file length (# of frames)
-#define VERY_BIG  (1e10)
-#define MAX_RUN 64// 3 //64//50000    minimum 4; should not surpass fsize
-#define ALPHA 1
-#define MID 0.5 //0.5; //1.9; //1.5
-#define SIDE 1
-#define SEN 1 // 0.9 // 0.98//1
-#define ELA 1 // 1
 
 // compression params
 #define COMP_THRESH -140
@@ -127,19 +111,20 @@ public:
 
 	// internal vars:
 	long ysize;
-	t_uint16 params, t, t_mod, h, h_mod, previous, iter;
+	//t_uint16 t, t_mod, h, h_mod, previous, iter;
 	double h_real;
-	vector<vector<t_atom_float> > x, y; 
-	vector<t_uint16> history, b_path;
-	vector<vector<double> > b_err;
-	vector<vector<double> > Dist, dtw, b_dtw, b_move;
-	t_uint16 b_start, bh_start;
-	double b_avgerr;
-	float mid_weight, top_weight, bot_weight;
-	bool follow;
+	//vector<vector<t_atom_float> > x, y;
+	//vector<t_uint16> history, b_path;
+	//vector<vector<double> > b_err;
+	//vector<vector<double> > Dist, dtw, b_dtw, b_move;
+	//t_uint16 b_start, bh_start;
+	//double b_avgerr;
+	//float mid_weight, top_weight, bot_weight;
+	//bool follow;
 
-	int features; // MFCCs or chroma vectors
-	vector<vector<double> > markers;
+    unsigned int params;    // number of params in feature vectors
+	unsigned int features;  // MFCCs or chroma vectors
+	//vector<vector<double> > markers;
 
 	deque<t_uint16> Deque;
 	double tempo, tempotempo, tempo_avg;
@@ -154,7 +139,8 @@ public:
 	float elasticity; // tempo response amp.
 	float error; // tempo tracking error vs DTW path / beats
 
-	t_uint16 runCount, maxRunCount, m_iter, m_ideal_iter, m_count, input_sel;
+	//t_uint16 runCount, maxRunCount, m_iter, m_ideal_iter, m_count;
+    t_uint16 input_sel;
 	t_atom dump[50];
 
 	//		DSP vars:
@@ -171,6 +157,7 @@ public:
 	//Gist<double> *gist;
 	BTrack *beat;
 	Chromagram *chroma;
+    oDTW *warp;
 
 	//		beat tracking vars:
 	vector<vector<float> > acc_beats; // acc_beats[0][]: beats, acc_beats[1][]: tempo
@@ -216,15 +203,15 @@ public:
 	double compress(double value, bool active);
 
 	// DTW methods:
-	void init_dtw();
-	void distance(t_uint16 i, t_uint16 j);	
-	t_uint16 get_inc();
-	void calc_dtw(t_uint16 i, t_uint16 j);
-	void dtw_process();
-	void increment_t();
-	void increment_h();
-	bool decrease_h();
-	void dtw_back();
+//	void init_dtw();
+//	void distance(t_uint16 i, t_uint16 j);	
+//	t_uint16 get_inc();
+//	void calc_dtw(t_uint16 i, t_uint16 j);
+//	void dtw_process();
+//	void increment_t();
+//	void increment_h();
+//	bool decrease_h();
+//	void dtw_back();
 
 	// tempo model methods:
 	double calc_tempo(int mode);

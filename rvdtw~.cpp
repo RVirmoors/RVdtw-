@@ -528,117 +528,60 @@ void Raskell::feats(t_uint16 argc) {
 			if (t == 0)//xsize-1)  // is the window full?
 				init_dtw();
 			else {
-				dtw_process(); // calculate next DTW step	
-				history[t] = h;
-				if (!CLASSIC) dtw_back(); // calculate backwards DTW for tempo
+                if (warp->processLiveFV(tfeat)) {
+                    // calculate next DTW step
+                    dtw_back(); // calculate backwards DTW for tempo
+                    t_uint16 t = warp->getT();
+                    t_uint16 h = warp->getH();
+                    outlet_int(max->out_t, t);
+                    if (t && (h >= warp->getHistory(t-1)))
+                        outlet_int(max->out_h, h);
+                }
+                else {
+                    post("End reached!");
+                    //	input(0);
+                    RVdtw_stop(max, 0);
+                }
 			}
 		}	// end input_sel==2 check
 	} // end input_sel>0 check
 }
 
 void Raskell::score_size(long v) {
-	long i;
-	if ((v < MAXLENGTH) && (v > 0)) {
-		ysize = v;
-		// we have ysize -> MEMORY ALLOCATION
-		y.clear();
-		y.resize(ysize);
-		for (i=0; i<ysize; i++) {
-			y[i].resize(params);
-		}
-		y_beats.clear();
-		y_beats.resize(2);
-		post("Score Matrix memory alloc'd, size %i * %i", ysize, params);	
-
-		reset(); // x, dtw arrays
-		history.resize(ysize);
-		b_path.resize(bsize);
-
-		markers.clear();
-		markers.resize(ysize);
-		for (i=0; i<ysize; i++)
-			markers[i].resize(5); // 0: scored, 1: certainty, 2: c2, 3: live ideal, 4: live detected
+	if (ysize = warp->setScoreSize(v)) {
+		post("Score Matrix memory alloc'd, size %i * %i", ysize, params);
+        y_beats.clear();
+        y_beats.resize(2);
 	}
-	else post("wrong/missing length");	
+	else post("wrong/missing length");
 }
 
 void Raskell::marker(t_symbol * s) {
 	// add new marker
 	if ((input_sel == IN_SCORE) && ysize) {
-		markers[m_iter][M_SCORED] = iter; // new marker at position iter
-		//post("Marker entered at position %i", iter);
-		//markers[m_iter][M_HOOK] = (t_uint16)s;// ? atom_getlong(av) : 0;
-		//post("MARKER_HOOK: %i", markers[m_iter][1]);
-		m_count++;
-		m_iter++;
+        warp->addMarkerToScore();
 	}
-	else if (input_sel == IN_LIVE) {
-		markers[m_ideal_iter][M_IDEAL] = iter;
-		//post("Marker (ideal) entered at position %i", iter);
-		m_ideal_iter++;
+    else if (input_sel == IN_LIVE) {
+        warp->addMarkerToLive();
+        //post("Marker (ideal) entered at position %i", iter);
 	}
-	
 }
 
 void Raskell::reset() {
-	t = t_mod = h = h_real = h_mod = runCount = iter = m_iter = m_ideal_iter = 0; // current position for online DTW: (t,h)
-	b_avgerr = b_start = bh_start = 0;
-	tempo = tempo_avg = 1;
-	tempotempo = 0;
-	previous = 0; // 0 = none; 1 = Row; 2 = Column; 3 = Both
-	top_weight = bot_weight = SIDE;
+    warp->start();
+
+    h_real = 0;
+    tempo = tempo_avg = 1;
+    tempotempo = 0;
 	integral = t_passed = last_arzt = 0;	
 	tempos.clear(); errors.clear();
 	acc_iter = b_iter = prev_h_beat = 0;
 	tempo_mode = 0;
-	
-	short i;
 
 	reset_feat();
 
-	x.clear();
-	x.resize(bsize);
-	for (i=0; i<bsize; i++) {
-		x[i].resize(params);
-	}
-
-	history.clear();
 	pivot1_t = pivot1_h = pivot2_t = pivot2_h = 0;
 	pivot1_tp = pivot2_tp = 1;
-
-	b_path.clear();
-
-	b_err.clear();
-	b_err.resize(bsize);
-	for (i=0; i<bsize; i++) {
-		b_err[i].resize(4); // error, t, h, local tempo
-	}
-
-	Dist.clear();
-	Dist.resize(bsize);
-	for (i=0; i<bsize; i++) {
-		Dist[i].resize(bsize);
-	}
-		
-	dtw.clear();
-	dtw.resize(fsize);
-	for (i=0; i<fsize; i++) {
-		dtw[i].resize(fsize);
-		fill(dtw[i].begin(), dtw[i].end(), VERY_BIG);
-	}
-
-	b_dtw.clear();
-	b_dtw.resize(bsize);
-	for (i=0; i<bsize; i++) {
-		b_dtw[i].resize(bsize);
-		fill(b_dtw[i].begin(), b_dtw[i].end(), VERY_BIG);
-	}
-
-	b_move.clear();
-	b_move.resize(bsize);
-	for (i=0; i<bsize; i++) {
-		b_move[i].resize(bsize);
-	}
 
 	post("At start position!");
 }
@@ -647,11 +590,9 @@ void Raskell::input(long v) {
 	// select input source: SCORE or LIVE 
 	reset_feat();
 	input_sel = v;
-	if((input_sel == IN_LIVE)&& !ysize) {
+	if((input_sel == IN_LIVE) && !ysize) {
 		object_error((t_object *)this, "initialize SCORE first!"); 
 		input_sel = 0;
-		m_iter = 0;
-		m_ideal_iter = 0;
 	}
 	switch (input_sel) {
 		case 0 : post("input selection is: OFF"); break;
@@ -661,9 +602,8 @@ void Raskell::input(long v) {
 	}
 	
 	if (input_sel == IN_LIVE) {
-		markers[m_count][0] = ysize-fsize; // add END marker
-		m_iter = 0; // start listening for event markers
-		iter = 0;
+		//markers[m_count][0] = ysize-fsize; // add END marker
+        warp->start();
 		b_iter = 0;
 		acc_iter = 0;
 	}
@@ -672,10 +612,11 @@ void Raskell::input(long v) {
 }
 
 void Raskell::gotomarker(long v) {
-	if ((v >= m_count) || (v < 0))
+    unsigned int to_h = warp->getMarkerFrame(v);
+	if (!to_h)
 		object_error((t_object *)this, "marker %i doesn't exist!", v);
 	else {
-		v = markers[v][0] * HOP_SIZE;
+		v = to_h * HOP_SIZE;
 		double ms = v / SampleRate * 1000.f;
 		gotoms(ms);
 	}
@@ -684,9 +625,9 @@ void Raskell::gotomarker(long v) {
 
 void Raskell::gotoms(long v) {
 	post("Starting from %i ms", v);
-	h = v * (double)(SampleRate / 1000.f / HOP_SIZE);
-	h_mod = h % fsize;
-	h_real = h;
+	unsigned int to_h = v * (double)(SampleRate / 1000.f / HOP_SIZE);
+    warp->setH(to_h);
+    h_real = to_h;
 }
 
 
@@ -788,193 +729,26 @@ void Raskell::calc_mfcc(t_uint16 frame_to_fft) {
 // ========================= DTW ============================
 
 void Raskell::init_dtw() {
-	outlet_int(max->out_t, t); // t==0 in the beginning
-	outlet_int(max->out_h, h);
-	distance(t, h); // calculate Dist[t_mod][h_mod]
-
-	for (t_uint16 i=0; i<fsize; i++) {
-		for (t_uint16 j=0; j<fsize; j++) {
-			dtw[i][j] = VERY_BIG;
-		}
-	}
-	dtw[t_mod][h_mod] = Dist[t%bsize][h%bsize]; // initial starting point
-
-	increment_t();
-	increment_h();
-	history[1] = 1;
+	outlet_int(max->out_t, warp->getT()); // t==0 in the beginning
+	outlet_int(max->out_h, warp->getH());
+    warp->start();
 	outlet_float(max->out_tempo, 1);
 }
 
 void Raskell::distance(t_uint16 i, t_uint16 j) {
-	t_uint16 k, imod = i%bsize, jmod=j%bsize;
-	// build distance matrix
-	double total;
-	total = 0;
 
-	if ((x[imod][0]==0)||(y[j][0]==0)) { // if either is undefined
-		total = VERY_BIG;
-		//post("WARNING input is zero, t=%i h=%i", i, j);
-	} else for (k = 0; k < params; k++) {
-		total = total + ((x[imod][k] - y[j][k]) * (x[imod][k] - y[j][k])); // distance computation 
-		//total = total + abs(x[imod][k] - y[j][k]); // L1 distance computation 
-	}
-	if (total < 0.0001)
-		total = 0;
-	total = sqrt(total);
-	total += ALPHA;
-
-	Dist[imod][jmod] = total;
-	//post("Dist[%i][%i] = %f", imod, jmod, total);
 }
 
 t_uint16 Raskell::get_inc() {
-	if (!follow) return NEW_BOTH; // if alignment is OFF, just go diagonally
 
-	// helper function for online DTW, choose Row (h) / Column (t) incrementation
-	t_uint16 i, next = 0;
-	t_uint16 tmin1 = (t_mod+fsize-1) % fsize;
-	t_uint16 hmin1 = (h_mod+fsize-1) % fsize;
-	t_uint16 tmin2 = (t_mod+fsize-2) % fsize;
-	t_uint16 hmin2 = (h_mod+fsize-2) % fsize;
-	double min = VERY_BIG;
-	/*
-	if (!CLASSIC && (t > MAX_RUN)) {
-		int difhist = history[t - 1] - history[t - MAX_RUN];
-	
-		if (runCount > maxRunCount || (difhist < (MAX_RUN / 16))) {
-			// tempo limit reached...
-			post("MAXRUNCOUNT h = %i, previous = %i", h, previous);
-			if (previous == NEW_ROW)
-				return NEW_COL;
-			else {
-				if (h > (bsize + MAX_RUN)) {
-					// NEW version
-					if (decrease_h())
-						return NEW_COL;
-				}
-			}				
-		}
-	} else { // classic o-DTW mode
-		if (runCount > maxRunCount) {
-			if (previous == NEW_ROW)
-				return NEW_COL;
-			else
-				return NEW_ROW;
-		}
-	}
-	*/
-	for (i=0; i<fsize; i++) // if minimum is in row h..
-		if(dtw[i][hmin1] < min) {
-			min = dtw[i][hmin1];
-			next = NEW_ROW; // ..then increment row next
-		}
-	for (i=0; i<fsize; i++) // if minimum is in column t..
-		if(dtw[tmin1][i] <= min) {
-			min = dtw[tmin1][i];
-			next = NEW_COL; // ..then increment column next
-		}
-	if(dtw[tmin1][hmin1] <= min) // otherwise...
-		next = NEW_BOTH; // ... increment BOTH.
-	
-	//post("min: %f", min);
-
-	return next;
 }
 
 void Raskell::calc_dtw(t_uint16 i, t_uint16 j) {
-	// calculate DTW matrix
-	double top, mid, bot, cheapest;
-	t_uint16 imin1 = (i+fsize-1) % fsize;
-	t_uint16 imin2 = (i+fsize-2) % fsize;
-	t_uint16 jmin1 = (j+fsize-1) % fsize;
-	t_uint16 jmin2 = (j+fsize-2) % fsize;
-	t_uint16 imod = i % fsize;
-	t_uint16 jmod = j % fsize;		
 
-	top = dtw[imin2][jmin1] + Dist[i%bsize][j%bsize] * top_weight;
-	mid = dtw[imin1][jmin1] + Dist[i%bsize][j%bsize] * mid_weight;
-	bot = dtw[imin1][jmin2] + Dist[i%bsize][j%bsize] * bot_weight;
-
-	if( (top < mid) && (top < bot))	{ 
-		cheapest = top;
-		}
-	else if (mid <= bot) {
-		cheapest = mid;
-		}
-	else { 
-		cheapest = bot;
-		}
-	dtw[imod][jmod] = cheapest;	
-	//post("dtw[%i][%i] = %f", i, j, cheapest);
 }
 
 void Raskell::dtw_process() {
-	short debug = 0;
-	static t_uint16 prev_h = 0;
-	t_uint16 inc = get_inc();
-	t_uint16 j, jstart;
-	if(debug) post("next 1:row/2:column/3:both : %i", inc);
 
-	// it's possible to have several Y/h hikes for each X/t feature:
-	assert(inc);
-	assert(ysize);
-	assert(markers[0][0]);
-	while((inc == NEW_ROW) && (h < ysize) && (h != markers[0][0] + fsize-1)) {
-		if (h >= prev_h)
-			outlet_int(max->out_h, h);
-
-		if (t<bsize)	jstart = 0;
-		else			jstart = t-bsize;
-		for (j = jstart; j < t; j++) {
-			//if(debug) post("calc HAP! j=%i h=%i", j, h);
-			distance(j, h); // calculate distance for new row
-			//if ((j>0)&&(h>0)) 
-			calc_dtw(j, h); // calc DTW for new row
-		}
-		increment_h();
-		previous = NEW_ROW;
-		runCount++;
-		inc = get_inc(); // get new inc
-		if(debug) post("HAP! next 1:row/2:column/3:both : %i", inc);
-	}
-				
-	if (h < ysize) { // unless we've reached the end of Y...
-					
-		if (inc != NEW_ROW) { // make new Column
-			outlet_int(max->out_t, t);
-			if (h<bsize)	jstart = 0;
-			else			jstart = h-bsize;
-
-			for(j=jstart; j<h; j++) {
-				distance(t, j); // calculate distance for new column
-				calc_dtw(t, j); // calc DTW for new column 
-			}
-			increment_t();
-		}
-		if (inc != NEW_COL) { // make new Row
-			if (h >= prev_h)
-				outlet_int(max->out_h, h);
-			if (t<bsize)	jstart = 0;
-			else			jstart = t-bsize;
-			for (j=jstart; j<t; j++) {
-				distance(j, h); // calculate distance for new row
-				calc_dtw(j, h); // calc DTW for new row
-			}
-			increment_h();
-		}
-		if (inc == previous)
-			runCount++;
-		else
-			runCount = 1;
-		if (inc != NEW_BOTH)
-			previous = inc;
-		prev_h = h;
-	}
-	else { // h = ysize
-		post("End reached!");
-	//	input(0);
-		RVdtw_stop(max, 0);
-	}
 }
 
 
