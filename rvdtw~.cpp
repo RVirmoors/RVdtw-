@@ -410,7 +410,7 @@ void Raskell::perform(double *in, long sampleframes, int dest) {
 		}	
 	}
 
-	if (dest == B_ACCO || ((h <= ysize) && (iter < ysize))) {
+	if (dest == B_ACCO || warp->isRunning()) {
 		
 		//post("in %f", in[0]);
 		std::vector<double> chr;
@@ -480,73 +480,68 @@ void Raskell::feats(t_uint16 argc) {
 			score_size(ysize);
 		}
 
-		if ((input_sel == IN_SCORE) && (iter < ysize)) { // build Y matrix (offline)
-			for (j=0; j<argc; j++) {
-				y[iter][j] = tfeat[j];
-			}
-			iter++; //iterate thru Y
-			if (iter == ysize) {
-				post("SCORE data fully loaded: %i frames, %i markers, %i ACC beats, %i Y beats.", 
-					ysize, m_count, acc_beats[0].size(), y_beats[0].size()); 
-				if (acc_beats[0].size()) {
-					// compare Y beats & ACC beats
-					b_iter = acc_iter = 0;
-					float diff = 0;
-					while (b_iter < y_beats[0].size() && acc_iter < acc_beats[0].size()) {
-						b_iter = update_beat_iter(b_iter, &y_beats[0], int(acc_beats[0][acc_iter]));
-						if (b_iter)
-							y_beats[1][b_iter] = calc_beat_diff(y_beats[0][b_iter], 
-													y_beats[0][b_iter-1], acc_beats[0][acc_iter]);
-						else 
-							y_beats[1][b_iter] = y_beats[0][b_iter] - acc_beats[0][acc_iter];
-						diff = (float)(y_beats[1][b_iter] + acc_iter * diff) / (acc_iter + 1); // CMA
-						acc_iter++;
-					}
-					post ("average diff between Y and ACC beats: %f", diff);
-					b_stdev = minerr = 0;
-					for ( int i = 0; i < b_iter; i++) 
-						b_stdev += (diff-y_beats[1][i]) * (diff-y_beats[1][i]);
-					b_stdev /= y_beats[0].size();
-					b_stdev = sqrt(b_stdev);
-					post ("std deviation between Y and ACC beats: %f", b_stdev);
-				}
-			}
+		if (input_sel == IN_SCORE) { // build Y matrix (offline)
+            warp->processScoreFV(tfeat);
+            
+            if (warp->isScoreLoaded()) {
+                post("SCORE data fully loaded: %i frames, %i ACC beats, %i Y beats.",
+                     ysize, acc_beats[0].size(), y_beats[0].size());
+                if (acc_beats[0].size()) {
+                    // compare Y beats & ACC beats
+                    b_iter = acc_iter = 0;
+                    float diff = 0;
+                    while (b_iter < y_beats[0].size() && acc_iter < acc_beats[0].size()) {
+                        b_iter = update_beat_iter(b_iter, &y_beats[0], int(acc_beats[0][acc_iter]));
+                        if (b_iter)
+                            y_beats[1][b_iter] = calc_beat_diff(y_beats[0][b_iter],
+                                                                y_beats[0][b_iter-1], acc_beats[0][acc_iter]);
+                        else
+                            y_beats[1][b_iter] = y_beats[0][b_iter] - acc_beats[0][acc_iter];
+                        diff = (float)(y_beats[1][b_iter] + acc_iter * diff) / (acc_iter + 1); // CMA
+                        acc_iter++;
+                    }
+                    post ("average diff between Y and ACC beats: %f", diff);
+                    b_stdev = minerr = 0;
+                    for ( int i = 0; i < b_iter; i++)
+                        b_stdev += (diff-y_beats[1][i]) * (diff-y_beats[1][i]);
+                    b_stdev /= y_beats[0].size();
+                    b_stdev = sqrt(b_stdev);
+                    post ("std deviation between Y and ACC beats: %f", b_stdev);
+                }
+            }
 		}
 	
 		if (input_sel == IN_LIVE) { // new X feature entered
 			iter++;
-			
+            warp->processLiveFV(tfeat);
 			// build X matrix (online)
-			for (i=0; i<argc; i++) {
-				x[t%bsize][i] = tfeat[i];
-			}
-            
-            // TODO: if (!follow), then go diagonally
 
-			if (t == 0)//xsize-1)  // is the window full?
-				init_dtw();
-			else {
-                if (warp->processLiveFV(tfeat)) {
-                    // calculate next DTW step
-                    dtw_back(); // calculate backwards DTW for tempo
-                    t_uint16 t = warp->getT();
-                    t_uint16 h = warp->getH();
-                    outlet_int(max->out_t, t);
-                    if (t && (h >= warp->getHistory(t-1)))
-                        outlet_int(max->out_h, h);
-                }
-                else {
-                    post("End reached!");
-                    //	input(0);
-                    RVdtw_stop(max, 0);
-                }
-			}
+            if (warp->isRunning()) {
+                // calculate next DTW step
+                t_uint16 t = warp->getT();
+                t_uint16 h = warp->getH();
+                outlet_int(max->out_t, t);
+                if (t && (h >= warp->getHistory(t-1)))
+                    outlet_int(max->out_h, h);
+                // output certainty
+                atom_setsym(dump, gensym("b_err"));
+                atom_setlong(dump+1, b_err[b_start][0]);
+                atom_setfloat(dump+2, b_avgerr);
+                atom_setfloat(dump+3, tempo_avg);
+                outlet_list(max->out_dump, 0L, 4, dump);
+            }
+            else {
+                post("End reached!");
+                //	input(0);
+                RVdtw_stop(max, 0);
+            }
+			
 		}	// end input_sel==2 check
 	} // end input_sel>0 check
 }
 
 void Raskell::score_size(long v) {
-	if (ysize = warp->setScoreSize(v)) {
+	if ((ysize = warp->setScoreSize(v))) {
 		post("Score Matrix memory alloc'd, size %i * %i", ysize, params);
         y_beats.clear();
         y_beats.resize(2);
@@ -554,7 +549,7 @@ void Raskell::score_size(long v) {
 	else post("wrong/missing length");
 }
 
-void Raskell::marker(t_symbol * s) {
+void Raskell::marker(t_symbol *s) {
 	// add new marker
 	if ((input_sel == IN_SCORE) && ysize) {
         warp->addMarkerToScore(iter);
@@ -752,111 +747,7 @@ void Raskell::dtw_process() {
 
 
 void Raskell::dtw_back() {
-	short debug = 0;
-	b_start = t % bsize;	
-	bh_start = h % bsize;
 
-	b_err[b_start][0] = 0.f; // to be computed after t > bsize, below
-	b_err[b_start][1] = t;
-	b_err[b_start][2] = h;
-	b_err[b_start][3] = 1.f; // local tempo:
-
-	if (t >= bsize && h >= bsize) { //&& (t % 2)
-		double top, mid, bot, cheapest;
-		t_uint16 i, j;
-		Deque.clear();	
-		b_path.clear();
-		if(debug) post("b_start is %i", b_start);
-		b_dtw[b_start][bh_start] = Dist[b_start][bh_start]; // starting point
-		b_move[b_start][bh_start] = NEW_BOTH;
-
-		// compute backwards DTW (circular i--), and b_move
-		for (i = b_start+bsize-1 % bsize; i != b_start; i = (i+bsize-1) % bsize) { // t-1 ... t-bsize
-			for (j = bh_start+bsize-1 % bsize; j != bh_start; j = (j+bsize-1) % bsize) { // h-1 ... h-bsize
-				t_uint16 imod = i % bsize;
-				t_uint16 imin1 = (i+1) % bsize;		
-				t_uint16 imin2 = (i+2) % bsize;
-				t_uint16 jmod = j % bsize;
-				t_uint16 jmin1 = (j+1) % bsize;
-				t_uint16 jmin2 = (j+2) % bsize;
-
-				top = b_dtw[imin2][jmin1] + Dist[imod][jmod] * 0.2;
-				mid = b_dtw[imin1][jmin1] + Dist[imod][jmod] * mid_weight;
-				bot = b_dtw[imin1][jmin2] + Dist[imod][jmod] * 0.2;
-
-				if( (top < mid) && (top < bot))	{ 
-					cheapest = top; b_move[imod][jmod] = NEW_ROW;
-					}
-				else if (mid <= bot) {
-					cheapest = mid; b_move[imod][jmod] = NEW_BOTH;
-					}
-				else { 
-					cheapest = bot; b_move[imod][jmod] = NEW_COL;
-					}
-				b_dtw[imod][jmod] = cheapest;
-			}
-		}
-		t_uint16 b_t = t, b_h = h;
-		i = (b_start+bsize-1) % bsize;		// t-1
-		j = (bh_start+bsize-1) % bsize;		// h-1
-		b_path.push_back(0);
-		int p = 1;
-		while (i != b_start && j != bh_start) {
-			if (b_move[i][j] == NEW_ROW) {
-				j = (j+bsize-1) % bsize;	 // j--
-				b_h--;
-				p++;
-			}
-			else if (b_move[i][j] == NEW_COL) {
-				i = (i+bsize-1) % bsize;	// i--
-				b_t--;
-				b_path.push_back(p);
-			}
-			else if (b_move[i][j] == NEW_BOTH) {
-				i = (i+bsize-1) % bsize;	// i--
-				j = (j+bsize-1) % bsize;	// j--
-				b_t--; b_h--;
-				p++;
-				b_path.push_back(p);
-			}
-		}
-
-		if (t > 80) {
-			b_err[(b_start-40+bsize)%bsize][3] = 
-				(float)(h - b_err[(b_start-80+bsize)%bsize][2] + 1) / (t - b_err[(b_start-80+bsize)%bsize][1] + 1);
-				//(double)b_path[80] / 80;
-			tempo_avg += b_err[(b_start-40+bsize)%bsize][3] / 40;
-			tempo_avg -= b_err[(b_start-80+bsize)%bsize][3] / 40;
-		}
-		
-		b_err[b_start][0] = history[b_t] - b_h;
-		b_avgerr += b_err[b_start][0] / 40;
-		b_avgerr -= b_err[(b_start-40+bsize)%bsize][0] / 40;
-		//float diff = b_err[b_start][0] - b_err[(b_start-1+bsize)%bsize][0];
-		//if (diff < 0)
-		//	b_err[b_start][0] -= diff / 2;
-		
-		if (tempo_mode != 2) { // if beat-tracker doesn't have control
-			if (b_err[b_start][0] > 5) { // gotta go DOWN
-				if (bot_weight < 20) bot_weight += abs(b_err[b_start][0]) / 50;
-				//post("bot w = %f", bot_weight);
-			}
-			else if (b_err[b_start][0] < -5) {	// gotta go UP			
-				if (top_weight < 20) top_weight += abs(b_err[b_start][0]) / 50;
-				//post("top w = %f", top_weight);
-			}
-			else {
-				top_weight = bot_weight = SIDE;
-			}
-		}
-		
-		// output certainty
-		atom_setsym(dump, gensym("b_err"));
-		atom_setlong(dump+1, b_err[b_start][0]);
-		atom_setfloat(dump+2, b_avgerr);
-		atom_setfloat(dump+3, tempo_avg);
-		outlet_list(max->out_dump, 0L, 4, dump);
-	}
 }
 
 double Raskell::calc_tempo(int mode) {
@@ -871,6 +762,14 @@ double Raskell::calc_tempo(int mode) {
 	bool got_new_tempo = false;
 	int K = second, L = second / 2;
 	t_uint16 counter = 0;
+    
+    if (t > 80) {
+        b_err[(b_start-40+bsize)%bsize][3] =
+        (float)(h - b_err[(b_start-80+bsize)%bsize][2] + 1) / (t - b_err[(b_start-80+bsize)%bsize][1] + 1);
+        //(double)b_path[80] / 80;
+        tempo_avg += b_err[(b_start-40+bsize)%bsize][3] / 40;
+        tempo_avg -= b_err[(b_start-80+bsize)%bsize][3] / 40;
+    }
 
 	switch(mode) {
 		case T_DTW:
@@ -930,6 +829,7 @@ double Raskell::calc_tempo(int mode) {
 			else {				
 				pivot1_t = pivot1_h = pivot2_t = pivot2_h = 0;
 				pivot1_tp = pivot2_tp = 1;
+                Deque.clear();
 				int j = 0;
 				for (int i = (b_start-1+bsize)%bsize; 
 						j < bsize - K - 2; 

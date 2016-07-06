@@ -37,8 +37,8 @@ public:
 	// add a Score (reference) feature vector
 	void processScoreFV(double *tfeat);
 
-	// add a Live (target) feature vector. Returns TRUE if running, FALSE if end reached.
-	bool processLiveFV(double *tfeat);
+	// add a Live (target) feature vector
+	void processLiveFV(double *tfeat);
 
 	// add a Marker to the Score ref.
 	void addMarkerToScore(unsigned int frame);
@@ -63,6 +63,12 @@ public:
 
 	// get historic H value
 	unsigned int getHistory(unsigned int from_t);
+    
+    // are we processing live FVs, and has the end not been reached?
+    bool isRunning();
+    
+    // is the whole score loaded?
+    bool isScoreLoaded();
 
 private:
 	// internal methods
@@ -78,7 +84,7 @@ private:
 
 	// internal vars
 	int fsize, bsize;
-	long ysize;	
+	long iter, ysize;
 	unsigned int params, t, t_mod, h, h_mod, previous;
 	vector<vector<double> > x, y;
 	vector<unsigned int> history, b_path;
@@ -92,5 +98,6 @@ private:
 	unsigned int runCount, maxRunCount, m_iter, m_ideal_iter, m_count;
 
 	bool back_active;
+    bool score_loaded;
 };
 

@@ -7,8 +7,9 @@ oDTW::oDTW(int windowSize_, int backWindowSize_, bool backActive_, unsigned int 
 		back_active(backActive_),
         params(params_)
 {
-    ysize = t = h = runCount = m_iter = m_ideal_iter = t_mod = h_mod = 0; // current position for online DTW: (t,h)
+    ysize = t = h = runCount = iter = m_iter = m_ideal_iter = t_mod = h_mod = 0; // current position for online DTW: (t,h)
     b_avgerr = b_start = bh_start = 0; // backwards DTW vars
+    score_loaded = false;
     
     m_count = 0; // one marker is mandatory (to start)
     previous = 0; // 0 = none; 1 = Row; 2 = Column; 3 = Both
@@ -31,6 +32,8 @@ oDTW::~oDTW() {
 unsigned int oDTW::setScoreSize(long v) {
     long i;
     if ((v < MAXLENGTH) && (v > 0)) {
+        iter = 0;
+        score_loaded = false;
         ysize = v;
         // we have ysize -> MEMORY ALLOCATION
         y.clear();
@@ -53,11 +56,27 @@ unsigned int oDTW::setScoreSize(long v) {
 }
 
 void oDTW::processScoreFV(double *tfeat) {
-    
+    if (iter < ysize) {
+        unsigned int j;
+        for (j=0; j < params; j++) {
+            y[iter][j] = tfeat[j];
+        }
+        iter++; //iterate thru Y
+    } else if (iter == ysize) {
+        score_loaded = true;
+    }
 }
 
-bool oDTW::processLiveFV(double *tfeat) {
-    
+void oDTW::processLiveFV(double *tfeat) {
+    if (t == 0)//xsize-1)  // is the window full?
+        init_dtw();
+    else {
+        unsigned int i;
+        for (i=0; i < params; i++) {
+            x[t%bsize][i] = tfeat[i];
+        }
+        dtw_back(); // calculate backwards DTW for tempo
+    }
 }
 
 void oDTW::addMarkerToScore(unsigned int frame) {
@@ -142,7 +161,16 @@ void oDTW::setH(unsigned int to_h) {
 }
 
 unsigned int oDTW::getHistory(unsigned int from_t) {
-    
+    return history[from_t];
+}
+
+bool oDTW::isRunning() {
+    if ((h <= ysize) && (h > 0)) return true;
+    else return false;
+}
+
+bool oDTW::isScoreLoaded() {
+    return score_loaded;
 }
 
 // ====== internal methods ==========
@@ -310,6 +338,92 @@ bool oDTW::decrease_h() {
 }
 
 void oDTW::dtw_back() {
+    b_start = t % bsize;
+    bh_start = h % bsize;
     
+    b_err[b_start][0] = 0.f; // to be computed after t > bsize, below
+    b_err[b_start][1] = t;
+    b_err[b_start][2] = h;
+    b_err[b_start][3] = 1.f; // local tempo:
+    
+    if (t >= bsize && h >= bsize) { //&& (t % 2)
+        double top, mid, bot, cheapest;
+        unsigned int i, j;
+        b_path.clear();
+        // post("b_start is %i", b_start);
+        b_dtw[b_start][bh_start] = Dist[b_start][bh_start]; // starting point
+        b_move[b_start][bh_start] = NEW_BOTH;
+        
+        // compute backwards DTW (circular i--), and b_move
+        for (i = b_start+bsize-1 % bsize; i != b_start; i = (i+bsize-1) % bsize) { // t-1 ... t-bsize
+            for (j = bh_start+bsize-1 % bsize; j != bh_start; j = (j+bsize-1) % bsize) { // h-1 ... h-bsize
+                unsigned int imod = i % bsize;
+                unsigned int imin1 = (i+1) % bsize;
+                unsigned int imin2 = (i+2) % bsize;
+                unsigned int jmod = j % bsize;
+                unsigned int jmin1 = (j+1) % bsize;
+                unsigned int jmin2 = (j+2) % bsize;
+                
+                top = b_dtw[imin2][jmin1] + Dist[imod][jmod] * 0.2;
+                mid = b_dtw[imin1][jmin1] + Dist[imod][jmod] * mid_weight;
+                bot = b_dtw[imin1][jmin2] + Dist[imod][jmod] * 0.2;
+                
+                if( (top < mid) && (top < bot))	{
+                    cheapest = top; b_move[imod][jmod] = NEW_ROW;
+                }
+                else if (mid <= bot) {
+                    cheapest = mid; b_move[imod][jmod] = NEW_BOTH;
+                }
+                else {
+                    cheapest = bot; b_move[imod][jmod] = NEW_COL;
+                }
+                b_dtw[imod][jmod] = cheapest;
+            }
+        }
+        unsigned int b_t = t, b_h = h;
+        i = (b_start+bsize-1) % bsize;		// t-1
+        j = (bh_start+bsize-1) % bsize;		// h-1
+        b_path.push_back(0);
+        int p = 1;
+        while (i != b_start && j != bh_start) {
+            if (b_move[i][j] == NEW_ROW) {
+                j = (j+bsize-1) % bsize;	 // j--
+                b_h--;
+                p++;
+            }
+            else if (b_move[i][j] == NEW_COL) {
+                i = (i+bsize-1) % bsize;	// i--
+                b_t--;
+                b_path.push_back(p);
+            }
+            else if (b_move[i][j] == NEW_BOTH) {
+                i = (i+bsize-1) % bsize;	// i--
+                j = (j+bsize-1) % bsize;	// j--
+                b_t--; b_h--;
+                p++;
+                b_path.push_back(p);
+            }
+        }
+        
+        b_err[b_start][0] = history[b_t] - b_h;
+        b_avgerr += b_err[b_start][0] / 40;
+        b_avgerr -= b_err[(b_start-40+bsize)%bsize][0] / 40;
+        //float diff = b_err[b_start][0] - b_err[(b_start-1+bsize)%bsize][0];
+        //if (diff < 0)
+        //	b_err[b_start][0] -= diff / 2;
+        
+//     if (tempo_mode != 2) { // if beat-tracker doesn't have control
+        if (b_err[b_start][0] > 5) { // gotta go DOWN
+            if (bot_weight < 20) bot_weight += abs(b_err[b_start][0]) / 50;
+            //post("bot w = %f", bot_weight);
+        }
+        else if (b_err[b_start][0] < -5) {	// gotta go UP
+            if (top_weight < 20) top_weight += abs(b_err[b_start][0]) / 50;
+            //post("top w = %f", top_weight);
+        }
+        else {
+            top_weight = bot_weight = SIDE;
+        }
+//     }
+    }
 }
-
