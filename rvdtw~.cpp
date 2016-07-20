@@ -321,24 +321,26 @@ Raskell::~Raskell() {
 }
 
 void Raskell::init(t_symbol *s,  long argc, t_atom *argv) {
-		f_open = FALSE;
-		f_fh = 0;
-		f_spool = 0;
-		f_data = 0;
-		ps_nothing = gensym("");
-		ps_buffer_modified = gensym("buffer_modified");	
-
-		post("RVdtw version %.2f", RV_VERSION);
-
-		buf_name = (argc) ? atom_getsym(argv) : gensym("");
-		
-		if (argc) {
-			if(!do_read(buf_name))
-				set_buffer(buf_name, B_SOLO); // first argument
-		}
-		else post("no score preloaded");
-
-		srand(744);
+    f_open = FALSE;
+    f_fh = 0;
+    f_spool = 0;
+    f_data = 0;
+    ps_nothing = gensym("");
+    ps_buffer_modified = gensym("buffer_modified");
+    
+    post("RVdtw version %.2f", RV_VERSION);
+    
+    buf_name = (argc) ? atom_getsym(argv) : gensym("");
+    
+    if (argc) {
+        if(!do_read(buf_name))
+            set_buffer(buf_name, B_SOLO); // first argument
+    }
+    else post("no score preloaded");
+    
+    fsize = warp->getFsize();
+    
+    srand(744);
 }
 
 bool Raskell::zeros(double *in, long sampleframes) {
@@ -410,7 +412,7 @@ void Raskell::perform(double *in, long sampleframes, int dest) {
 		}	
 	}
 
-	if (dest == B_ACCO || warp->isRunning()) {
+//	if (dest == B_ACCO || warp->isRunning()) {
 		
 		//post("in %f", in[0]);
 		std::vector<double> chr;
@@ -447,7 +449,7 @@ void Raskell::perform(double *in, long sampleframes, int dest) {
 					acc_iter++; // count frames for ACCO beat marking
 			}
 		}
-	}
+//	}
 }
 
 t_uint16 Raskell::update_beat_iter(t_uint16 beat_iter, vector<float> *beat_vector, double ref_beat) {
@@ -477,11 +479,13 @@ void Raskell::feats(t_uint16 argc) {
 		if (params != argc) {
 			post("new number of params: %d", argc);
 			params = (t_uint16)argc;
+            warp->setParams(params);
 			score_size(ysize);
 		}
 
 		if (input_sel == IN_SCORE) { // build Y matrix (offline)
             warp->processScoreFV(tfeat);
+            post("processed frame: %f", tfeat[0]);
             
             if (warp->isScoreLoaded()) {
                 post("SCORE data fully loaded: %i frames, %i ACC beats, %i Y beats.",
@@ -508,6 +512,7 @@ void Raskell::feats(t_uint16 argc) {
                     b_stdev = sqrt(b_stdev);
                     post ("std deviation between Y and ACC beats: %f", b_stdev);
                 }
+                
             }
 		}
 	
@@ -515,6 +520,7 @@ void Raskell::feats(t_uint16 argc) {
 			iter++;
             warp->processLiveFV(tfeat);
 			// build X matrix (online)
+            post ("h = %i, ysize = %i", warp->getH(), ysize);
 
             if (warp->isRunning()) {
                 // calculate next DTW step
@@ -525,10 +531,24 @@ void Raskell::feats(t_uint16 argc) {
                     outlet_int(max->out_h, h);
                 // output certainty
                 atom_setsym(dump, gensym("b_err"));
-                atom_setlong(dump+1, b_err[b_start][0]);
-                atom_setfloat(dump+2, b_avgerr);
+//                atom_setlong(dump+1, b_err[b_start][0]); // TODO
+//                atom_setfloat(dump+2, b_avgerr);
                 atom_setfloat(dump+3, tempo_avg);
                 outlet_list(max->out_dump, 0L, 4, dump);
+                
+                b_err = warp->getBackPath();
+                bsize = b_err.size();
+//                post("bsize is %i", bsize);
+                b_start = t % bsize;
+                
+                if (t > 80) {
+                    tempo_avg += b_err[(b_start-40+bsize)%bsize][3] / 40;
+                    tempo_avg -= b_err[(b_start-80+bsize)%bsize][3] / 40;
+                }
+                
+                // choose tempo model: oDTW-based or beat-based
+                beat_switch();
+                input(0);
             }
             else {
                 post("End reached!");
@@ -575,6 +595,10 @@ void Raskell::reset() {
 
 	pivot1_t = pivot1_h = pivot2_t = pivot2_h = 0;
 	pivot1_tp = pivot2_tp = 1;
+    
+    outlet_int(max->out_t, warp->getT()); // t==0 in the beginning
+    outlet_int(max->out_h, warp->getH());
+    outlet_float(max->out_tempo, 1);
 
 	post("At start position!");
 }
@@ -701,7 +725,7 @@ void Raskell::reset_feat() {
 }
 
 void Raskell::calc_mfcc(t_uint16 frame_to_fft) {
-	t_uint16 i, j;//, K=(WINDOW_SIZE/2)+1;
+	t_uint16 i;//, K=(WINDOW_SIZE/2)+1;
 	for(i=0; i<WINDOW_SIZE; i++) {
 		in[i] = frame[frame_to_fft][i];
 	}
@@ -721,37 +745,13 @@ void Raskell::calc_mfcc(t_uint16 frame_to_fft) {
 
 // ========================= DTW ============================
 
-void Raskell::init_dtw() {
-	outlet_int(max->out_t, warp->getT()); // t==0 in the beginning
-	outlet_int(max->out_h, warp->getH());
-    warp->start();
-	outlet_float(max->out_tempo, 1);
-}
-
-void Raskell::distance(t_uint16 i, t_uint16 j) {
-
-}
-
-t_uint16 Raskell::get_inc() {
-
-}
-
-void Raskell::calc_dtw(t_uint16 i, t_uint16 j) {
-
-}
-
-void Raskell::dtw_process() {
-
-}
-
-
-
-void Raskell::dtw_back() {
-
-}
 
 double Raskell::calc_tempo(int mode) {
+    unsigned int t = warp->getT();
 	if (t == 0) return 1;
+    
+    unsigned int h = warp->getH();
+    
 	int second = SampleRate / HOP_SIZE; // number of frames per second
 	static double last_tempo = 1;
 	double new_tempo = tempo;
@@ -763,13 +763,7 @@ double Raskell::calc_tempo(int mode) {
 	int K = second, L = second / 2;
 	t_uint16 counter = 0;
     
-    if (t > 80) {
-        b_err[(b_start-40+bsize)%bsize][3] =
-        (float)(h - b_err[(b_start-80+bsize)%bsize][2] + 1) / (t - b_err[(b_start-80+bsize)%bsize][1] + 1);
-        //(double)b_path[80] / 80;
-        tempo_avg += b_err[(b_start-40+bsize)%bsize][3] / 40;
-        tempo_avg -= b_err[(b_start-80+bsize)%bsize][3] / 40;
-    }
+
 
 	switch(mode) {
 		case T_DTW:
@@ -779,7 +773,7 @@ double Raskell::calc_tempo(int mode) {
 				if(beat_due) {
 					// updated every beat
 					post("update tempo, beat ela: %f", elast_beat);
-					new_tempo = (double)(history[t] - history[last_beat]) / (t - last_beat);
+					new_tempo = (double)(warp->getHistory(t) - warp->getHistory(last_beat)) / (t - last_beat);
 					last_beat = t;
 				}
 			}
@@ -792,7 +786,7 @@ double Raskell::calc_tempo(int mode) {
 					// tempo model in Papiotis10, updated every beat
 					if(elast_beat == 1) post("update tempo 1");
 					else post ("%.2f", elast_beat);
-					new_tempo = (double)(history[t] - history[last_beat]) / (t - last_beat);
+					new_tempo = (double)(warp->getHistory(t) - warp->getHistory(last_beat)) / (t - last_beat);
 					double boost = error / ((double)(t - last_beat)*10);
 					new_tempo += boost;
 					last_beat = t;
@@ -810,7 +804,7 @@ double Raskell::calc_tempo(int mode) {
 					integral += error;
 				if (beat_due) {
 					// PID tempo model		
-					new_tempo = (double)(history[t] - history[last_beat]) / (t - last_beat);
+					new_tempo = (double)(warp->getHistory(t) - warp->getHistory(last_beat)) / (t - last_beat);
 					float derivate = (error - errors[0]) / (t - last_beat);
 					//post("err = %f // int = %f // der = %f", Kp*error, Ki*integral, Kd*derivate);
 					double boost = (Kp*error + Ki*integral + Kd * derivate) / ((double)(t - last_beat));
@@ -825,7 +819,7 @@ double Raskell::calc_tempo(int mode) {
 			// first pivot is within L steps from path origin
 			// 2nd pivot is at least K steps away from 1st, AND minimizes SUM(var_tempo[pivots])
 			if (t < bsize || h < bsize)
-				new_tempo = history[t] - history[t-1]; // not yet active
+				new_tempo = warp->getHistory(t) - warp->getHistory(t-1); // not yet active
 			else {				
 				pivot1_t = pivot1_h = pivot2_t = pivot2_h = 0;
 				pivot1_tp = pivot2_tp = 1;
@@ -958,10 +952,13 @@ double Raskell::calc_tempo(int mode) {
 	return new_tempo;
 }
 
-void Raskell::increment_t() {
-	error = (h - h_real);
+void Raskell::beat_switch() {
+    unsigned int t = warp->getT();
+    unsigned int h = warp->getH();
+    error = (h - h_real);
+    
 	double beat_tempo = calc_beat_tempo();
-	int beat_length = (acc_iter) ? acc_beats[0][acc_iter] - acc_beats[0][acc_iter-1] : fsize;
+    int beat_length = (acc_iter) ? acc_beats[0][acc_iter] - acc_beats[0][acc_iter-1] : fsize;
 
 	static int waiting = 0;
 	// sensitivity to tempo fluctuations:
@@ -1015,9 +1012,7 @@ void Raskell::increment_t() {
 		// output active tempo calculation toggle
 		atom_setlong(dump+3, tempo_mode);
 		outlet_list(max->out_dump, 0L, 4, dump);
-	} 
-	t++;
-	t_mod = (t_mod+1)%fsize;
+	}
 }
 
 double Raskell::calc_beat_tempo() {
@@ -1029,9 +1024,8 @@ double Raskell::calc_beat_tempo() {
 	return (beat->getCurrentTempoEstimate() / ref_tempo);
 }
 
-void Raskell::increment_h() {
-	h++;
-	h_mod = (h_mod+1)%fsize;
+//void Raskell::increment_h() {
+
 	/*
 	elast_beat = 1;
 	float dist = 3/(abs(y_beats[1][b_iter])+1);
@@ -1054,67 +1048,10 @@ void Raskell::increment_h() {
 		}
 	}*/
 
-	if (h >= markers[m_iter][M_SCORED]) {
-	//if (h_real >= markers[m_iter][M_SCORED]) {
-		markers[m_iter][M_LIVE] = t; // marker detected at time "t"
-		//markers[m_iter][M_HOOK] = dtw_certainty;
-		markers[m_iter][M_ACC] = h_real;
-		post("marker detected at t = %i, h = %i, h_real = %f", t, h, h_real);
-		atom_setsym(dump, gensym("marker"));
-		atom_setlong(dump+1, m_iter);
-		outlet_list(max->out_dump, 0L, 2, dump);
-		if (m_iter < m_count)
-			m_iter++;
-		else {
-			post("End reached!");
-			//input(0);
-			RVdtw_stop(max, 0);
-		}
-	}
-}
 
-bool Raskell::decrease_h() {
-	vector<double> diff;
-	long i, j, ends;
-	long begin = h - MAX_RUN + 1;
-	static long min_begin = begin;
-	if (begin < min_begin) {		
-		post("begin = %i; min = %i", begin, min_begin);
-		return false;
-	}		
-	else
-		min_begin = begin;
+//}
 
-	post("moving h back %i steps", MAX_RUN);
-	ends = MAX_RUN / 4;
 
-	// make phantom y continuous with existing y
-	diff.clear();
-	diff.resize(params);
-	for(i = 0; i < params; i++) {
-		for(j = 0; j < ends; j++)
-			diff[i] += (y[h-j][i] - y[begin+j][i]);
-		diff[i] /= ends;
-	}
-	for(long k = begin; k <= h; k++) {
-		for(i = 0; i < params; i++)
-			y[k][i] += diff[i];
-	}
-	
-	while(h > begin) {
-		if (m_iter && h == markers[m_iter-1][0])
-			m_iter--; // cancel any markers
-		h--;
-	}
-	h_mod = h%fsize;
-
-	for(i = t-bsize; i < t; i++)
-		for(j = h-bsize; j < h; j++) {
-			distance(i, j); // calculate distance 
-			calc_dtw(i, j); // calc DTW cost
-		}
-	return true;
-}
 
 // ========================= FILE i/o =================
 bool Raskell::do_read(t_symbol *s) {
@@ -1203,12 +1140,7 @@ bool Raskell::read_line() {
 		if(length > (params+1) && input_sel != IN_LIVE) {
 			post("NOTE: number of params increased to %i", params);
 			params = length-1; // set number of parameters (increase if necessary)
-			for (i=0; i<bsize; i++) {
-				x[i].resize(params);
-			}
-			for (i=0; i<ysize; i++) {
-				y[i].resize(params);
-			}
+			warp->setParams(params);
 		}
 
 		for(t_uint16 i=0; i<params; i++) 
@@ -1247,7 +1179,8 @@ bool Raskell::read_line() {
 
 double Raskell::compress(double value, bool active) {
 	static t_uint16 timer = 1;
-	if (t < 4) timer = COMP_RELEASE;
+	//if (t < 4)
+        timer = COMP_RELEASE;
 	if (value > 0) {	// upper thresh (limiter)
 		value = -COMP_THRESH / COMP_RATIO;
 	} else {			// lower thresh
@@ -1317,8 +1250,8 @@ void Raskell::do_write(t_symbol *s) {
 	if (input_sel == OUT_IO) { // in IO mode, report history
 		filetype = 'CSV';
 		strcpy(filename, "io");
-		for (i = 0; i < h; i++) {
-			buf += to_string((long long)history[i]) + "\n";
+		for (i = 0; i < warp->getH(); i++) {
+			buf += to_string(warp->getHistory(i)) + "\n";
 		}
 	} else if (input_sel == IN_SCORE) { // in SCORE mode, save the score
 		strcpy(filename, "score.txt");
@@ -1326,7 +1259,7 @@ void Raskell::do_write(t_symbol *s) {
 		for (i = 0; i < ysize; i++) {
 			buf += to_string(i) + ",";
 			for (j = 0; j < params; j++) {
-				buf += " " + to_string((long double)y[i][j]);
+				buf += " " + to_string(warp->getY(i,j));
 			}
 			if (y_beats[0].size() && i == y_beats[0][b_iter]) {
 				buf += " beat";
@@ -1352,11 +1285,11 @@ void Raskell::do_write(t_symbol *s) {
 			to_string((long long)COMP_THRESH);		
 		buf+="\nMarker Trace Results for," + score_name + ", vs, " + live_name;
 		buf+="\nID, Score pos, Certainty, Live accomp, Live ideal, Live detected";
-		for (i = 0; i <= m_count; i++) {
+		for (i = 0; i <= warp->getMarkerCount(); i++) {
 			buf += "\n" + to_string(i);
 			for (j = 0; j < 5; j++)
-				buf += ", " + to_string((long long)markers[i][j]);
-		}
+                buf += ", " + to_string(warp->getMarker(i,j));
+        }
 	}
 
 	//file_close();

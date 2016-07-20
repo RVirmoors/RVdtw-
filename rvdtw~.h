@@ -116,9 +116,9 @@ public:
 	double h_real;
 	//vector<vector<t_atom_float> > x, y;
 	//vector<t_uint16> history, b_path;
-	//vector<vector<double> > b_err;
+	vector<vector<double> > b_err;
 	//vector<vector<double> > Dist, dtw, b_dtw, b_move;
-	//t_uint16 b_start, bh_start;
+	t_uint16 b_start, bh_start, bsize;
 	//double b_avgerr;
 	//float mid_weight, top_weight, bot_weight;
 	bool follow;
@@ -139,6 +139,7 @@ public:
 	float sensitivity; // tempo fluctuations
 	float elasticity; // tempo response amp.
 	float error; // tempo tracking error vs DTW path / beats
+    unsigned int fsize;
 
 	//t_uint16 runCount, maxRunCount, m_iter, m_ideal_iter, m_count;
     t_uint16 input_sel;
@@ -218,6 +219,7 @@ public:
 	double calc_tempo(int mode);
 
 	// beat methods:
+    void beat_switch();
 	int calc_beat_diff(double cur_beat, double prev_beat, double ref_beat);
 	t_uint16 update_beat_iter(t_uint16 beat_iter, vector<float> *beat_vector, double ref_beat);
 	double calc_beat_tempo();

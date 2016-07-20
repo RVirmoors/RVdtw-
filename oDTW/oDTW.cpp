@@ -75,6 +75,7 @@ void oDTW::processLiveFV(double *tfeat) {
         for (i=0; i < params; i++) {
             x[t%bsize][i] = tfeat[i];
         }
+        dtw_process(); // compute oDTW path
         dtw_back(); // calculate backwards DTW for tempo
     }
 }
@@ -92,6 +93,18 @@ void oDTW::addMarkerToLive(unsigned int frame) {
 
 unsigned int oDTW::getMarkerFrame(long here) {
     return markers[here][M_SCORED];
+}
+
+unsigned int oDTW::getMarkerCount() {
+    return m_count;
+}
+
+
+unsigned int oDTW::getMarker(unsigned int i, unsigned int j) {
+    if (i <= m_count && j < 5)
+        return markers[i][j];
+    else
+        return 0;
 }
 
 
@@ -164,13 +177,34 @@ unsigned int oDTW::getHistory(unsigned int from_t) {
     return history[from_t];
 }
 
+double oDTW::getY(unsigned int i, unsigned int j) {
+    return y[i][j];
+}
+
+
+
+unsigned int oDTW::getFsize() {
+    return fsize;
+}
+
+vector<vector<double> > oDTW::getBackPath() {
+    return b_err;
+}
+
 bool oDTW::isRunning() {
-    if ((h <= ysize) && (h > 0)) return true;
+    if ((h < ysize) && (h > 0)) return true;
     else return false;
 }
 
 bool oDTW::isScoreLoaded() {
     return score_loaded;
+}
+
+void oDTW::setParams(int params_) {
+    if (params_ != params) {
+        params = params_;
+        start();
+    }
 }
 
 // ====== internal methods ==========
@@ -326,14 +360,73 @@ bool oDTW::dtw_process() {
 }
 
 void oDTW::increment_t() {
-    
+    t++;
+    t_mod = (t_mod+1)%fsize;
 }
 
 void oDTW::increment_h() {
+    h++;
+    h_mod = (h_mod+1)%fsize;
     
+    if (h >= markers[m_iter][M_SCORED]) {
+        //if (h_real >= markers[m_iter][M_SCORED]) {
+        markers[m_iter][M_LIVE] = t; // marker detected at time "t"
+        //markers[m_iter][M_HOOK] = dtw_certainty;
+        /* TO DO
+        markers[m_iter][M_ACC] = h_real;
+        post("marker detected at t = %i, h = %i, h_real = %f", t, h, h_real);
+        atom_setsym(dump, gensym("marker"));
+        atom_setlong(dump+1, m_iter);
+        outlet_list(max->out_dump, 0L, 2, dump);
+        if (m_iter < m_count)
+            m_iter++;
+         */
+    }
 }
 
 bool oDTW::decrease_h() {
+    /* TO DO
+     vector<double> diff;
+     long i, j, ends;
+     long begin = h - MAX_RUN + 1;
+     static long min_begin = begin;
+     if (begin < min_begin) {
+     post("begin = %i; min = %i", begin, min_begin);
+     return false;
+     }
+     else
+     min_begin = begin;
+     
+     post("moving h back %i steps", MAX_RUN);
+     ends = MAX_RUN / 4;
+     
+     // make phantom y continuous with existing y
+     diff.clear();
+     diff.resize(params);
+     for(i = 0; i < params; i++) {
+     for(j = 0; j < ends; j++)
+     diff[i] += (y[h-j][i] - y[begin+j][i]);
+     diff[i] /= ends;
+     }
+     for(long k = begin; k <= h; k++) {
+     for(i = 0; i < params; i++)
+     y[k][i] += diff[i];
+     }
+     
+     while(h > begin) {
+     if (m_iter && h == markers[m_iter-1][0])
+     m_iter--; // cancel any markers
+     h--;
+     }
+     h_mod = h%fsize;
+     
+     for(i = t-bsize; i < t; i++)
+     for(j = h-bsize; j < h; j++) {
+     distance(i, j); // calculate distance 
+     calc_dtw(i, j); // calc DTW cost
+     }
+     return true;
+     */
     
 }
 
@@ -425,5 +518,12 @@ void oDTW::dtw_back() {
             top_weight = bot_weight = SIDE;
         }
 //     }
+        
+        
+        if (t > 80) {
+            // compute local tempo based on back DTW history:
+            b_err[(b_start-40+bsize)%bsize][3] =
+            (float)(h - b_err[(b_start-80+bsize)%bsize][2] + 1) / (t - b_err[(b_start-80+bsize)%bsize][1] + 1);
+        }
     }
 }

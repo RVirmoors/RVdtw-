@@ -48,7 +48,13 @@ public:
     
     // get frame number for a certain (score) marker
     unsigned int getMarkerFrame(long here);
-
+    
+    // get marker count
+    unsigned int getMarkerCount();
+    
+    // get markers
+    unsigned int getMarker(unsigned int i, unsigned int j);
+    
 	// empty all the internal vars, except the Score, and point back to the start.
 	void start();
 
@@ -57,18 +63,30 @@ public:
 
 	// get current reference time H
 	unsigned int getH();
-
-	// set new reference time. Use with caution - causes the system to effectively jump in time!
-	void setH(unsigned int to_h);
+    
+    // set new reference time. Use with caution - causes the system to effectively jump in time!
+    void setH(unsigned int to_h);
 
 	// get historic H value
 	unsigned int getHistory(unsigned int from_t);
+    
+    // get Y score value
+    double getY(unsigned int i, unsigned int j);
+    
+    // get oDTW window size
+    unsigned int getFsize();
+    
+    // get backwards path vector[4]: error, t, h, local tempo
+    vector<vector<double> > getBackPath();
     
     // are we processing live FVs, and has the end not been reached?
     bool isRunning();
     
     // is the whole score loaded?
     bool isScoreLoaded();
+    
+    // set # of params
+    void setParams(int params_);
 
 private:
 	// internal methods
@@ -88,7 +106,7 @@ private:
 	unsigned int params, t, t_mod, h, h_mod, previous;
 	vector<vector<double> > x, y;
 	vector<unsigned int> history, b_path;
-	vector<vector<double> > b_err;
+    vector<vector<double> > b_err;
 	vector<vector<double> > Dist, dtw, b_dtw, b_move;
 	unsigned int b_start, bh_start;
 	double b_avgerr;
