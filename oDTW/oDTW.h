@@ -6,8 +6,8 @@
 
 
 // DTW params
-#define	FSIZE 128//32 // DTW window length (# of input frames)
-#define BSIZE 512//128 // backwards DTW win length; should be larger than fsize
+#define	FSIZE 4//128//32 // DTW window length (# of input frames)
+#define BSIZE 16//512//128 // backwards DTW win length; should be larger than fsize
 
 #define MAXLENGTH 500000 //maximum input file length (# of frames)
 #define VERY_BIG  (1e10)

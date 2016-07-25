@@ -31,7 +31,7 @@ oDTW::~oDTW() {
 
 unsigned int oDTW::setScoreSize(long v) {
     long i;
-    if ((v < MAXLENGTH) && (v > 0)) {
+    if ((v < MAXLENGTH) && (v > bsize)) {
         iter = 0;
         score_loaded = false;
         ysize = v;
@@ -62,7 +62,8 @@ void oDTW::processScoreFV(double *tfeat) {
             y[iter][j] = tfeat[j];
         }
         iter++; //iterate thru Y
-    } else if (iter == ysize) {
+    }
+    if (iter == ysize) {
         score_loaded = true;
     }
 }
@@ -76,7 +77,7 @@ void oDTW::processLiveFV(double *tfeat) {
             x[t%bsize][i] = tfeat[i];
         }
         dtw_process(); // compute oDTW path
-        dtw_back(); // calculate backwards DTW for tempo
+  //      dtw_back(); // calculate backwards DTW for tempo
     }
 }
 
@@ -507,23 +508,23 @@ void oDTW::dtw_back() {
         
 //     if (tempo_mode != 2) { // if beat-tracker doesn't have control
         if (b_err[b_start][0] > 5) { // gotta go DOWN
-            if (bot_weight < 20) bot_weight += abs(b_err[b_start][0]) / 50;
+            if (bot_weight < 20) bot_weight += fabs(b_err[b_start][0]) / 50;
             //post("bot w = %f", bot_weight);
         }
         else if (b_err[b_start][0] < -5) {	// gotta go UP
-            if (top_weight < 20) top_weight += abs(b_err[b_start][0]) / 50;
+            if (top_weight < 20) top_weight += fabs(b_err[b_start][0]) / 50;
             //post("top w = %f", top_weight);
         }
         else {
             top_weight = bot_weight = SIDE;
         }
 //     }
+        int step = bsize / 4;
         
-        
-        if (t > 80) {
+        if (t > step * 2) {
             // compute local tempo based on back DTW history:
-            b_err[(b_start-40+bsize)%bsize][3] =
-            (float)(h - b_err[(b_start-80+bsize)%bsize][2] + 1) / (t - b_err[(b_start-80+bsize)%bsize][1] + 1);
+            b_err[(b_start-step+bsize)%bsize][3] =
+            (float)(h - b_err[(b_start-(step*2)+bsize)%bsize][2] + 1) / (t - b_err[(b_start-(step*2)+bsize)%bsize][1] + 1);
         }
     }
 }

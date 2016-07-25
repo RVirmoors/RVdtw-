@@ -375,28 +375,26 @@ void Raskell::perform(double *in, long sampleframes, int dest) {
 				if (acc_beats[0].size()) {
 					acc_iter = update_beat_iter(acc_iter, &acc_beats[0], h_real);
 					diff_acc = calc_beat_diff(h_real, prev_h_beat, acc_beats[0][acc_iter]);
+                    
+                    ref_tempo = acc_beats[1][acc_iter];
+                    
+                    // average the last 3 diffs between Y and ACCO beats
+                    minerr = 0;
+                    int i = 0;
+                    if (b_iter > 3)
+                        i = b_iter - 3;
+                    for(; i <= b_iter; i++) {
+                        minerr += y_beats[1][b_iter];
+                    }
+                    minerr /= 3;
+                    // output minerr
+                    atom_setsym(dump, gensym("beat_err"));
+                    atom_setlong(dump+1, minerr);
+                    outlet_list(max->out_dump, 0L, 2, dump);
+                    
 				} else 
 					diff_acc = VERY_BIG;				
 				prev_h_beat = h_real;
-				//minerr = abs(diff_acc - y_beats[1][b_iter]) - b_stdev;
-					//diff_y - diff_acc;
-					//min(abs(diff_y) - b_stdev, abs(diff_acc) - b_stdev);
-				//post("minerr %f ( %f vs %f ) y: %d acco: %d", minerr, abs(diff_y), abs(diff_acc), iter, acc_iter);
-				
-				ref_tempo = acc_beats[1][acc_iter];
-
-				minerr = 0;
-				int i = 0;
-				if (b_iter > 3)
-					i = b_iter - 3;
-				for(; i <= b_iter; i++) {
-					minerr += y_beats[1][b_iter];
-				}
-				minerr /= 3;
-				// output minerr
-				atom_setsym(dump, gensym("beat_err"));
-				atom_setlong(dump+1, minerr);
-				outlet_list(max->out_dump, 0L, 2, dump);
 
 				beat_due = true;
 			}
@@ -465,17 +463,17 @@ t_uint16 Raskell::update_beat_iter(t_uint16 beat_iter, vector<float> *beat_vecto
 
 int Raskell::calc_beat_diff(double cur_beat, double prev_beat, double ref_beat) {
 	int newdiff = cur_beat - ref_beat;
-	if (abs(newdiff) > (cur_beat - prev_beat)/4) // reverse phase
+    if (abs(newdiff) > (cur_beat - prev_beat)/4) { // reverse phase
 		if (cur_beat < ref_beat)
 			newdiff = cur_beat + (cur_beat - prev_beat)/2 - ref_beat;
 		else
 			newdiff = cur_beat - (cur_beat - prev_beat)/2 - ref_beat;
+    }
 	return newdiff;
 }
 
 void Raskell::feats(t_uint16 argc) {
 	if ((ysize > 0) && (input_sel > 0))  { // Y matrix was init'd, let's populate it
-		t_uint16 i, j;
 		if (params != argc) {
 			post("new number of params: %d", argc);
 			params = (t_uint16)argc;
@@ -485,11 +483,12 @@ void Raskell::feats(t_uint16 argc) {
 
 		if (input_sel == IN_SCORE) { // build Y matrix (offline)
             warp->processScoreFV(tfeat);
-            post("processed frame: %f", tfeat[0]);
+        //    post("processed frame: %f", tfeat[0]);
             
             if (warp->isScoreLoaded()) {
                 post("SCORE data fully loaded: %i frames, %i ACC beats, %i Y beats.",
                      ysize, acc_beats[0].size(), y_beats[0].size());
+                input(0);
                 if (acc_beats[0].size()) {
                     // compare Y beats & ACC beats
                     b_iter = acc_iter = 0;
@@ -512,7 +511,6 @@ void Raskell::feats(t_uint16 argc) {
                     b_stdev = sqrt(b_stdev);
                     post ("std deviation between Y and ACC beats: %f", b_stdev);
                 }
-                
             }
 		}
 	
@@ -520,7 +518,7 @@ void Raskell::feats(t_uint16 argc) {
 			iter++;
             warp->processLiveFV(tfeat);
 			// build X matrix (online)
-            post ("h = %i, ysize = %i", warp->getH(), ysize);
+            //post ("h = %i, ysize = %i", warp->getH(), ysize);
 
             if (warp->isRunning()) {
                 // calculate next DTW step
@@ -541,14 +539,15 @@ void Raskell::feats(t_uint16 argc) {
 //                post("bsize is %i", bsize);
                 b_start = t % bsize;
                 
-                if (t > 80) {
-                    tempo_avg += b_err[(b_start-40+bsize)%bsize][3] / 40;
-                    tempo_avg -= b_err[(b_start-80+bsize)%bsize][3] / 40;
+                int step = bsize / 4;
+                
+                if (t > step * 2) {
+                    tempo_avg += b_err[(b_start- step   +bsize)%bsize][3] / step;
+                    tempo_avg -= b_err[(b_start-(step*2)+bsize)%bsize][3] / step;
                 }
                 
                 // choose tempo model: oDTW-based or beat-based
                 beat_switch();
-                input(0);
             }
             else {
                 post("End reached!");

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VariablesViewState
+   version = "1.0">
+   <ContextStates>
+      <ContextState
+         contextName = "Raskell::feats(unsigned short):rvdtw~.cpp">
+         <PersistentStrings>
+            <PersistentString
+               value = "tfeat">
+            </PersistentString>
+         </PersistentStrings>
+      </ContextState>
+      <ContextState
+         contextName = "oDTW::processLiveFV(double*):oDTW.cpp">
+      </ContextState>
+      <ContextState
+         contextName = "oDTW::dtw_process():oDTW.cpp">
+      </ContextState>
+      <ContextState
+         contextName = "oDTW::processScoreFV(double*):oDTW.cpp">
+         <PersistentStrings>
+            <PersistentString
+               value = "y">
+            </PersistentString>
+            <PersistentString
+               value = "iter">
+            </PersistentString>
+         </PersistentStrings>
+      </ContextState>
+   </ContextStates>
+</VariablesViewState>
