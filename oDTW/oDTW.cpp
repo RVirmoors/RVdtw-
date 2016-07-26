@@ -55,7 +55,7 @@ unsigned int oDTW::setScoreSize(long v) {
     else return 0;
 }
 
-void oDTW::processScoreFV(double *tfeat) {
+unsigned int oDTW::processScoreFV(double *tfeat) {
     if (iter < ysize) {
         unsigned int j;
         for (j=0; j < params; j++) {
@@ -66,6 +66,7 @@ void oDTW::processScoreFV(double *tfeat) {
     if (iter == ysize) {
         score_loaded = true;
     }
+	return iter;
 }
 
 void oDTW::processLiveFV(double *tfeat) {
@@ -77,7 +78,7 @@ void oDTW::processLiveFV(double *tfeat) {
             x[t%bsize][i] = tfeat[i];
         }
         dtw_process(); // compute oDTW path
-  //      dtw_back(); // calculate backwards DTW for tempo
+        dtw_back(); // calculate backwards DTW for tempo
     }
 }
 

@@ -6,8 +6,8 @@
 
 
 // DTW params
-#define	FSIZE 4//128//32 // DTW window length (# of input frames)
-#define BSIZE 16//512//128 // backwards DTW win length; should be larger than fsize
+#define	FSIZE 128//32 // DTW window length (# of input frames)
+#define BSIZE 512//128 // backwards DTW win length; should be larger than fsize
 
 #define MAXLENGTH 500000 //maximum input file length (# of frames)
 #define VERY_BIG  (1e10)
@@ -34,8 +34,8 @@ public:
     // returns # of params if succeeded, 0 if wrong/missing length v.
 	unsigned int setScoreSize(long v);
 
-	// add a Score (reference) feature vector
-	void processScoreFV(double *tfeat);
+	// add a Score (reference) feature vector. Returns the # of the current vector (between 0 and ysize).
+	unsigned int processScoreFV(double *tfeat);
 
 	// add a Live (target) feature vector
 	void processLiveFV(double *tfeat);

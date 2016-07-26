@@ -356,8 +356,8 @@ void Raskell::perform(double *in, long sampleframes, int dest) {
 		return;
 
 	beat->processAudioFrame(in);
-	//if(beat->beatDueInCurrentFrame())
-	//	post("beat! t= %f", beat->getCurrentTempoEstimate());
+//	if(beat->beatDueInCurrentFrame())
+//		post("beat! t= %f", beat->getCurrentTempoEstimate());
 	
 	if(beat->beatDueInCurrentFrame()) { // beat detected
 		switch (dest) {
@@ -482,7 +482,7 @@ void Raskell::feats(t_uint16 argc) {
 		}
 
 		if (input_sel == IN_SCORE) { // build Y matrix (offline)
-            warp->processScoreFV(tfeat);
+            iter = warp->processScoreFV(tfeat);
         //    post("processed frame: %f", tfeat[0]);
             
             if (warp->isScoreLoaded()) {
@@ -582,7 +582,7 @@ void Raskell::marker(t_symbol *s) {
 void Raskell::reset() {
     warp->start();
 
-    h_real = 0;
+    iter = h_real = 0;
     tempo = tempo_avg = 1;
     tempotempo = 0;
 	integral = t_passed = last_arzt = 0;	
@@ -620,6 +620,7 @@ void Raskell::input(long v) {
 	if (input_sel == IN_LIVE) {
 		//markers[m_count][0] = ysize-fsize; // add END marker
         warp->start();
+		iter = 0;
 		b_iter = 0;
 		acc_iter = 0;
 	}
@@ -1250,7 +1251,7 @@ void Raskell::do_write(t_symbol *s) {
 		filetype = 'CSV';
 		strcpy(filename, "io");
 		for (i = 0; i < warp->getH(); i++) {
-			buf += to_string(warp->getHistory(i)) + "\n";
+			buf += to_string(long long(warp->getHistory(i))) + "\n";
 		}
 	} else if (input_sel == IN_SCORE) { // in SCORE mode, save the score
 		strcpy(filename, "score.txt");
@@ -1258,14 +1259,14 @@ void Raskell::do_write(t_symbol *s) {
 		for (i = 0; i < ysize; i++) {
 			buf += to_string(i) + ",";
 			for (j = 0; j < params; j++) {
-				buf += " " + to_string(warp->getY(i,j));
+				buf += " " + to_string(long double(warp->getY(i,j)));
 			}
 			if (y_beats[0].size() && i == y_beats[0][b_iter]) {
 				buf += " beat";
 				b_iter++;
 			}
 			if (acc_beats[0].size() && i == acc_beats[0][acc_iter]) {
-				buf += " accobeat " + to_string((long double)acc_beats[1][acc_iter]);
+				buf += " accobeat " + to_string((long long)acc_beats[1][acc_iter]);
 				acc_iter++;
 			}
 			buf += ";\n";
@@ -1287,7 +1288,7 @@ void Raskell::do_write(t_symbol *s) {
 		for (i = 0; i <= warp->getMarkerCount(); i++) {
 			buf += "\n" + to_string(i);
 			for (j = 0; j < 5; j++)
-                buf += ", " + to_string(warp->getMarker(i,j));
+                buf += ", " + to_string(long double(warp->getMarker(i,j)));
         }
 	}
 
