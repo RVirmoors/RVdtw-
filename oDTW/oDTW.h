@@ -1,8 +1,21 @@
 #pragma once
 
-#include "defines.h"		// int defines
-
 #include <vector>
+
+// int defines
+
+// previous dtw step:
+#define NEW_ROW 1
+#define NEW_COL 2
+#define NEW_BOTH 3
+
+// marker matrix:
+#define M_SCORED 0
+#define M_HOOK 1
+#define M_ACC 2
+#define M_IDEAL 3
+#define M_LIVE 4
+
 
 
 // DTW params

@@ -5,6 +5,11 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "rvdtw~", "rvdtw~.vcxproj", 
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{FE989911-0FC0-40CA-A680-798D82825EC7}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "oDTW_test", "oDTW_test\oDTW_test.vcxproj", "{2E870FC2-F4FD-4FE7-8B30-84FE18DB906C}"
+	ProjectSection(ProjectDependencies) = postProject
+		{D7D2B050-0FAC-4326-89AD-C82254541416} = {D7D2B050-0FAC-4326-89AD-C82254541416}
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -21,6 +26,12 @@ Global
 		{D7D2B050-0FAC-4326-89AD-C82254541416}.Release|Win32.Build.0 = Release|Win32
 		{D7D2B050-0FAC-4326-89AD-C82254541416}.Release|x64.ActiveCfg = Release|x64
 		{D7D2B050-0FAC-4326-89AD-C82254541416}.Release|x64.Build.0 = Release|x64
+		{2E870FC2-F4FD-4FE7-8B30-84FE18DB906C}.Debug|Win32.ActiveCfg = Debug|Win32
+		{2E870FC2-F4FD-4FE7-8B30-84FE18DB906C}.Debug|Win32.Build.0 = Debug|Win32
+		{2E870FC2-F4FD-4FE7-8B30-84FE18DB906C}.Debug|x64.ActiveCfg = Debug|Win32
+		{2E870FC2-F4FD-4FE7-8B30-84FE18DB906C}.Release|Win32.ActiveCfg = Release|Win32
+		{2E870FC2-F4FD-4FE7-8B30-84FE18DB906C}.Release|Win32.Build.0 = Release|Win32
+		{2E870FC2-F4FD-4FE7-8B30-84FE18DB906C}.Release|x64.ActiveCfg = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

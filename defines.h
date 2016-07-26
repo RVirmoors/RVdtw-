@@ -5,22 +5,13 @@
 // int defines
 
 
-// previous dtw step:
-#define NEW_ROW 1
-#define NEW_COL 2
-#define NEW_BOTH 3
 
 // input select:
 #define IN_SCORE 1
 #define IN_LIVE 2
 #define OUT_IO 3
 
-// marker matrix:
-#define M_SCORED 0
-#define M_HOOK 1
-#define M_ACC 2
-#define M_IDEAL 3
-#define M_LIVE 4
+
 
 // tempo models:
 #define T_DTW 0
