@@ -288,6 +288,9 @@ Raskell::Raskell() {
 		
 		features = CHROMA;
 		tempo_model = T_PID;
+        params = m = 12;
+    
+#ifdef USE_FFTW
 		samp = fftw_alloc_real(WINDOW_SIZE);
 						
 		if (features == MFCCS) {			
@@ -301,9 +304,9 @@ Raskell::Raskell() {
 			plan = fftw_plan_dft_r2c_1d(WINDOW_SIZE, in, out, FFTW_MEASURE); // FFT real to complex FFTW_MEASURE 
 			dct = fftw_plan_r2r_1d(m, logEnergy, tfeat, FFTW_REDFT10, NULL);
 		} else if (features == CHROMA) {
-			params = m = 12;
 			tfeat = fftw_alloc_real(m);
 		}
+#endif
 
 		dspinit();
 		//post ("RV object created");
@@ -311,12 +314,13 @@ Raskell::Raskell() {
 
 
 Raskell::~Raskell() {
+#ifdef USE_FFTW
 	fftw_destroy_plan(plan);
     fftw_free(in); fftw_free(out);
 	fftw_free(logEnergy);
 	fftw_free(tfeat);
 	fftw_cleanup();
-		
+#endif
 		//file_close();
 }
 
@@ -725,6 +729,7 @@ void Raskell::reset_feat() {
 }
 
 void Raskell::calc_mfcc(t_uint16 frame_to_fft) {
+#ifdef USE_FFTW
 	t_uint16 i;//, K=(WINDOW_SIZE/2)+1;
 	for(i=0; i<WINDOW_SIZE; i++) {
 		in[i] = frame[frame_to_fft][i];
@@ -740,7 +745,8 @@ void Raskell::calc_mfcc(t_uint16 frame_to_fft) {
 		logEnergy[i] = log10(logEnergy[i]);
 	}
 	//take DCT
-	fftw_execute(dct);	
+	fftw_execute(dct);
+#endif
 }
 
 // ========================= DTW ============================
@@ -1251,7 +1257,7 @@ void Raskell::do_write(t_symbol *s) {
 		filetype = 'CSV';
 		strcpy(filename, "io");
 		for (i = 0; i < warp->getH(); i++) {
-			buf += to_string(long long(warp->getHistory(i))) + "\n";
+			buf += to_string((long long)(warp->getHistory(i))) + "\n";
 		}
 	} else if (input_sel == IN_SCORE) { // in SCORE mode, save the score
 		strcpy(filename, "score.txt");
@@ -1259,7 +1265,7 @@ void Raskell::do_write(t_symbol *s) {
 		for (i = 0; i < ysize; i++) {
 			buf += to_string(i) + ",";
 			for (j = 0; j < params; j++) {
-				buf += " " + to_string(long double(warp->getY(i,j)));
+				buf += " " + to_string((long double)(warp->getY(i,j)));
 			}
 			if (y_beats[0].size() && i == y_beats[0][b_iter]) {
 				buf += " beat";
@@ -1288,7 +1294,7 @@ void Raskell::do_write(t_symbol *s) {
 		for (i = 0; i <= warp->getMarkerCount(); i++) {
 			buf += "\n" + to_string(i);
 			for (j = 0; j < 5; j++)
-                buf += ", " + to_string(long double(warp->getMarker(i,j)));
+                buf += ", " + to_string((long double)(warp->getMarker(i,j)));
         }
 	}
 

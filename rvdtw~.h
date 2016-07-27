@@ -22,7 +22,9 @@ Version history:
 #include "defines.h"		// int defines
 
 //#define USE_FFTW	// preprocessor define!
+#ifdef USE_FFTW
 #include <fftw3.h>
+#endif
 //#include "gist.h"
 #include "chromagram.h"
 #include "BTrack.h"
@@ -154,8 +156,10 @@ public:
 	double *in, *logEnergy, *tfeat, *samp;
 	vector<double> window;
 	int m; // Mel filterbanks
+#ifdef USE_FFTW
 	fftw_complex *out;
     fftw_plan plan, dct;
+#endif
 	//Gist<double> *gist;
 	BTrack *beat;
 	Chromagram *chroma;
