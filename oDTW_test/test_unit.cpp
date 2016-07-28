@@ -4,7 +4,9 @@
 #include <iostream>
 #include "..\oDTW\oDTW.h"
 
+BOOST_AUTO_TEST_SUITE(DTW_tests)
 
+// ===============================================
  
 BOOST_AUTO_TEST_CASE(identical)
 {
@@ -25,3 +27,15 @@ BOOST_AUTO_TEST_CASE(identical)
 
 	BOOST_CHECK(dtw.getHistory(6) == 6);
 }
+
+// ===============================================
+
+BOOST_AUTO_TEST_CASE(simple)
+{
+	oDTW dtw;
+
+}
+
+// ===============================================
+
+BOOST_AUTO_TEST_SUITE_END()

@@ -1117,7 +1117,7 @@ void Raskell::file_open(char *name) {
 				RVdtw_read_line(max, 0);
 			} 
 			else {
-			// read LIVE frames: instant simulation
+				// read LIVE frames: instant simulation
 				live_name = name;
 				RVdtw_read_line(max, 0);
 			}
