@@ -153,7 +153,7 @@ public:
 	vector<t_uint16> frame_index;
 	float SampleRate;
 	vector<vector<double> > frame, banks;
-	double *in, *logEnergy, *tfeat, *samp;
+	double *in, *logEnergy, *tfeat;//, *samp;
 	vector<double> window;
 	int m; // Mel filterbanks
 #ifdef USE_FFTW

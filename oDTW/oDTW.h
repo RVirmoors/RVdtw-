@@ -104,14 +104,14 @@ public:
 private:
 	// internal methods
 	void init_dtw();
-	void distance(unsigned int i, unsigned int j);	
+	void distance(unsigned int i, unsigned int j);	// bsize x bsize
 	unsigned int get_inc();
-	void calc_dtw(unsigned int i, unsigned int j);
+	void calc_dtw(unsigned int i, unsigned int j);	// fsize x fsize
 	bool dtw_process();
 	void increment_t();
 	void increment_h();
 	bool decrease_h();
-	void dtw_back();
+	void dtw_back();								// bsize x bsize
 
 	// internal vars
 	int fsize, bsize;

@@ -289,9 +289,10 @@ Raskell::Raskell() {
 		features = CHROMA;
 		tempo_model = T_PID;
         params = m = 12;
+//		tfeat = malloc(m * sizeof(double));
     
 #ifdef USE_FFTW
-		samp = fftw_alloc_real(WINDOW_SIZE);
+//		samp = fftw_alloc_real(WINDOW_SIZE);
 						
 		if (features == MFCCS) {			
 			params = 40; // # of feats to be used
@@ -749,6 +750,30 @@ void Raskell::calc_mfcc(t_uint16 frame_to_fft) {
 #endif
 }
 
+
+double Raskell::compress(double value, bool active) {
+	static t_uint16 timer = 1;
+	//if (t < 4)
+        timer = COMP_RELEASE;
+	if (value > 0) {	// upper thresh (limiter)
+		value = -COMP_THRESH / COMP_RATIO;
+	} else {			// lower thresh
+		if (active) {
+			value = (value - COMP_THRESH) / COMP_RATIO;
+			timer = 1;
+		}		
+		else {
+			if (timer < COMP_RELEASE) {
+				float ratio = timer * COMP_RATIO;
+				value = (value - COMP_THRESH) / ratio;
+				timer++;
+//				post("RELEASING %i value: %.2f", timer, value);
+			}		
+		}
+	}
+	return value;
+}
+
 // ========================= DTW ============================
 
 
@@ -1105,7 +1130,7 @@ void Raskell::file_open(char *name) {
 				acc_beats.resize(2);
 				score_name = name;
 				// start reading SCORE frames				
-				// count # of feat's:
+				// count # of framess:
 				long lines=0;
 				char *eol = strchr((char*)f_data[0], '\n');
 				while(eol != NULL) {
@@ -1183,28 +1208,6 @@ bool Raskell::read_line() {
 	return false;
 }
 
-double Raskell::compress(double value, bool active) {
-	static t_uint16 timer = 1;
-	//if (t < 4)
-        timer = COMP_RELEASE;
-	if (value > 0) {	// upper thresh (limiter)
-		value = -COMP_THRESH / COMP_RATIO;
-	} else {			// lower thresh
-		if (active) {
-			value = (value - COMP_THRESH) / COMP_RATIO;
-			timer = 1;
-		}		
-		else {
-			if (timer < COMP_RELEASE) {
-				float ratio = timer * COMP_RATIO;
-				value = (value - COMP_THRESH) / ratio;
-				timer++;
-//				post("RELEASING %i value: %.2f", timer, value);
-			}		
-		}
-	}
-	return value;
-}
 
 void Raskell::file_close() {
 	if (f_open) {

@@ -78,7 +78,8 @@ void oDTW::processLiveFV(double *tfeat) {
             x[t%bsize][i] = tfeat[i];
         }
         dtw_process(); // compute oDTW path
-        dtw_back(); // calculate backwards DTW for tempo
+        if(back_active)
+			dtw_back(); // calculate backwards DTW for tempo
     }
 }
 
@@ -212,7 +213,7 @@ void oDTW::setParams(int params_) {
 // ====== internal methods ==========
 
 void oDTW::init_dtw() {
-    distance(t, h); // calculate Dist[t_mod][h_mod]
+    distance(t, h);
     
     for (unsigned int i=0; i<fsize; i++) {
         for (unsigned int j=0; j<fsize; j++) {
@@ -356,9 +357,9 @@ bool oDTW::dtw_process() {
         history[t] = h;
         return true;
     }
-    else { // h = ysize
-        return false;
-    }
+	
+
+    return false; 
 }
 
 void oDTW::increment_t() {
@@ -370,9 +371,9 @@ void oDTW::increment_h() {
     h++;
     h_mod = (h_mod+1)%fsize;
     
-    if (h >= markers[m_iter][M_SCORED]) {
+   // if (h >= markers[m_iter][M_SCORED]) {
         //if (h_real >= markers[m_iter][M_SCORED]) {
-        markers[m_iter][M_LIVE] = t; // marker detected at time "t"
+   //     markers[m_iter][M_LIVE] = t; // marker detected at time "t"
         //markers[m_iter][M_HOOK] = dtw_certainty;
         /* TO DO
         markers[m_iter][M_ACC] = h_real;
@@ -383,7 +384,7 @@ void oDTW::increment_h() {
         if (m_iter < m_count)
             m_iter++;
          */
-    }
+    //}
 }
 
 bool oDTW::decrease_h() {
