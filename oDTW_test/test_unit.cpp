@@ -4,6 +4,7 @@
 //#include <iostream>
 #include <fstream>
 #include <math.h>
+#include <cstdint>
 #include "..\oDTW\oDTW.h"
 
 BOOST_AUTO_TEST_SUITE(oDTW_test_suite)
@@ -35,7 +36,7 @@ BOOST_AUTO_TEST_CASE(identical)
 BOOST_AUTO_TEST_CASE(file_inputs)
 {
 	
-	oDTW *dtw = new oDTW(32, 128, false, 12);
+	oDTW *dtw = new oDTW(128, 256, false, 12);
 	ifstream fileX("fileX.txt"); 
 	ifstream fileY("fileY.txt"); 
 	double f_feat[50];
@@ -51,6 +52,8 @@ BOOST_AUTO_TEST_CASE(file_inputs)
 
 	BOOST_CHECK (xsize);
 	BOOST_CHECK (ysize);
+	BOOST_TEST_MESSAGE (" X size is " << xsize);
+	BOOST_TEST_MESSAGE (" Y size is " << ysize);
 	fileX.seekg(0);
 	fileY.seekg(0);
 
@@ -80,7 +83,7 @@ BOOST_AUTO_TEST_CASE(file_inputs)
 	BOOST_CHECK(dtw->isScoreLoaded());
 
 	dtw->start();
-	dtw->setH(160);
+	//dtw->setH(165);
 	
 	while (getline(fileX, line)) {
 		int length = sscanf(line.c_str(), "%*lf, %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf ",
@@ -93,11 +96,12 @@ BOOST_AUTO_TEST_CASE(file_inputs)
 			&f_feat[30], &f_feat[31], &f_feat[32], &f_feat[33], &f_feat[34], 
 			&f_feat[35], &f_feat[36], &f_feat[37], &f_feat[38], &f_feat[39]);
 		BOOST_CHECK (length == params);
+		
+		BOOST_TEST_CHECKPOINT ("now at t = " << dtw->getT() << " h = "<< dtw->getH());
 		dtw->processLiveFV(f_feat);
-		BOOST_TEST_MESSAGE ("now at t = " << dtw->getT() << " h = "<< dtw->getH());
 	}
 
-	BOOST_CHECK(dtw->getT() == xsize);
+	BOOST_CHECK_MESSAGE(dtw->getT() == xsize, "still running! t is " << dtw->getT());
 	BOOST_CHECK_MESSAGE(!dtw->isRunning(), "still running! h is " << dtw->getH());
 
 	int thresh = 20;
@@ -107,7 +111,8 @@ BOOST_AUTO_TEST_CASE(file_inputs)
 
 	for (int i = 0; i < 8; i++) {
 		BOOST_CHECK_MESSAGE(abs((int)dtw->getHistory(Xmarker[i]) - Ymarker[i]) <= thresh,
-			"marker "<< i <<" failed! real = "<<dtw->getHistory(Xmarker[i]) << "; ideal = " << Ymarker[i]);
+			"mk "<< i <<" fail! real = "<<dtw->getHistory(Xmarker[i]) << "; ideal = " << Ymarker[i]
+			<< " | diff = " << (int)dtw->getHistory(Xmarker[i]) - Ymarker[i]);
 	}
 
 }

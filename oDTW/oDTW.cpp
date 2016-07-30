@@ -102,7 +102,6 @@ unsigned int oDTW::getMarkerCount() {
     return m_count;
 }
 
-
 unsigned int oDTW::getMarker(unsigned int i, unsigned int j) {
     if (i <= m_count && j < 5)
         return markers[i][j];
@@ -307,7 +306,7 @@ bool oDTW::dtw_process() {
     unsigned int j, jstart;
     
     // it's possible to have several Y/h hikes for each X/t feature:
-    while((inc == NEW_ROW) && (h < ysize) && (h != markers[0][0] + fsize-1)) {
+    while((inc == NEW_ROW) && (h < ysize)) {
         
         if (t<bsize)	jstart = 0;
         else			jstart = t-bsize;

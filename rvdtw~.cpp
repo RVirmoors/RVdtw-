@@ -426,7 +426,8 @@ void Raskell::perform(double *in, long sampleframes, int dest) {
 				//post("frame is full # %d. first sample: %f", iter, frame[i][0]);
 				if (dest != B_ACCO) {
 					if (zeros(in, sampleframes)) {
-						memset(tfeat, 0, sizeof(double)*params);
+						for (i=0; i<params; i++)
+							tfeat[i] = 0.0001;
 					}
 					else {
 						switch (features) {
