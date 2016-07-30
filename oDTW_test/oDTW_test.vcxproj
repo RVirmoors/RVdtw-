@@ -87,7 +87,7 @@
       <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>"$(TargetDir)$(TargetName).exe" --result_code=no --report_level=no</Command>
+      <Command>"$(TargetDir)$(TargetName).exe" --result_code=no --report_level=no --log_level=message</Command>
     </PostBuildEvent>
     <PostBuildEvent>
       <Message>auto run test</Message>

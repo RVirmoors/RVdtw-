@@ -357,9 +357,6 @@ bool Raskell::zeros(double *in, long sampleframes) {
 
 void Raskell::perform(double *in, long sampleframes, int dest) {
 
-	if (zeros(in, sampleframes)) 
-		return;
-
 	beat->processAudioFrame(in);
 //	if(beat->beatDueInCurrentFrame())
 //		post("beat! t= %f", beat->getCurrentTempoEstimate());
@@ -428,24 +425,30 @@ void Raskell::perform(double *in, long sampleframes, int dest) {
 			if(frame_index[i]==0) {		// if frame is full, then compute feature vector
 				//post("frame is full # %d. first sample: %f", iter, frame[i][0]);
 				if (dest != B_ACCO) {
-					switch (features) {
-						case (MFCCS) :	
-							for(j=0; j<WINDOW_SIZE; j++)
-								frame[i][j] *= window[j]; // apply hamming window
-							calc_mfcc(i); // get tfeat[]
-							// if signal is loud enough, then compress the first MFCC coefficient (loudness)
-							if (tfeat[0] > COMP_THRESH) 
-								tfeat[0] = compress(tfeat[0], true);//tfeat[0] /= 8;
-							else tfeat[0] = compress(tfeat[0], false);
-							break;					
-						case (CHROMA) :
-							chroma->processAudioFrame(frame[i]);
-							if (chroma->isReady()) {
-								chr = chroma->getChromagram();						
-								tfeat = &chr[0];
-							}
-							break;
+					if (zeros(in, sampleframes)) {
+						memset(tfeat, 0, sizeof(double)*params);
 					}
+					else {
+						switch (features) {
+							case (MFCCS) :	
+								for(j=0; j<WINDOW_SIZE; j++)
+									frame[i][j] *= window[j]; // apply hamming window
+								calc_mfcc(i); // get tfeat[]
+								// if signal is loud enough, then compress the first MFCC coefficient (loudness)
+								if (tfeat[0] > COMP_THRESH) 
+									tfeat[0] = compress(tfeat[0], true);//tfeat[0] /= 8;
+								else tfeat[0] = compress(tfeat[0], false);
+								break;					
+							case (CHROMA) :
+								chroma->processAudioFrame(frame[i]);
+								if (chroma->isReady()) {
+									chr = chroma->getChromagram();						
+									tfeat = &chr[0];
+								}
+								break;
+						}
+					}
+
 					feats(params);
 				}
 				if (dest == B_ACCO)
@@ -478,6 +481,8 @@ int Raskell::calc_beat_diff(double cur_beat, double prev_beat, double ref_beat) 
 }
 
 void Raskell::feats(t_uint16 argc) {
+	//post("processing feats %f ", tfeat[0]);
+
 	if ((ysize > 0) && (input_sel > 0))  { // Y matrix was init'd, let's populate it
 		if (params != argc) {
 			post("new number of params: %d", argc);
@@ -488,9 +493,9 @@ void Raskell::feats(t_uint16 argc) {
 
 		if (input_sel == IN_SCORE) { // build Y matrix (offline)
             iter = warp->processScoreFV(tfeat);
-        //    post("processed frame: %f", tfeat[0]);
+            post("processed frame: %d -> %f", iter, tfeat[0]);
             
-            if (warp->isScoreLoaded()) {
+            if (warp->isScoreLoaded()) { // if iter == ysize
                 post("SCORE data fully loaded: %i frames, %i ACC beats, %i Y beats.",
                      ysize, acc_beats[0].size(), y_beats[0].size());
                 input(0);
@@ -1354,7 +1359,7 @@ void Raskell::set_buffer(t_symbol *s, int dest) {
 		long frames = buffer_getframecount(b);
 		post("Buffer is %d samples long", frames);
 		if (dest == B_SOLO && input_sel == IN_SCORE) {// make new score
-			score_size((long)(frames / HOP_SIZE - active_frames + 1));
+			score_size((long)(frames / HOP_SIZE));
 			warp->addMarkerToScore(1); // add marker at start (position 1)
 			iter = 0;
 		}
@@ -1363,13 +1368,15 @@ void Raskell::set_buffer(t_symbol *s, int dest) {
 
 		if (sample) {
 			double samp[HOP_SIZE];
+			long framesread = 0;
 			beat->updateHopAndFrameSize(HOP_SIZE, HOP_SIZE*2);
 			for (long i = 0; i < frames-HOP_SIZE; i += HOP_SIZE) {			
 				std::copy(sample+i, sample+i+HOP_SIZE, samp); // convert float to double
 				//post("sample[%d] %f , double %f", i, sample[i], samp[0]);
 				perform(samp, HOP_SIZE, dest);
+				framesread ++;
 			}
-			post("Done reading buffer. %d ACC beats. %d Y beats.", acc_beats[0].size(), y_beats[0].size());
+			post("Done reading buffer. %d frames. %d ACC beats. %d Y beats.", framesread, acc_beats[0].size(), y_beats[0].size());
 		}
 		buffer_unlocksamples(b);
 	}

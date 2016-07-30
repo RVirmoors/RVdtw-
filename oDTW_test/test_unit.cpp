@@ -3,6 +3,7 @@
 #include <boost/test/unit_test.hpp>
 //#include <iostream>
 #include <fstream>
+#include <math.h>
 #include "..\oDTW\oDTW.h"
 
 BOOST_AUTO_TEST_SUITE(oDTW_test_suite)
@@ -34,7 +35,7 @@ BOOST_AUTO_TEST_CASE(identical)
 BOOST_AUTO_TEST_CASE(file_inputs)
 {
 	
-	oDTW *dtw = new oDTW(32, 128, true, 12);
+	oDTW *dtw = new oDTW(32, 128, false, 12);
 	ifstream fileX("fileX.txt"); 
 	ifstream fileY("fileY.txt"); 
 	double f_feat[50];
@@ -75,8 +76,11 @@ BOOST_AUTO_TEST_CASE(file_inputs)
 		iter = dtw->processScoreFV(f_feat);
 	}
 	
-	BOOST_CHECK(iter);
+	BOOST_CHECK(iter == ysize);
 	BOOST_CHECK(dtw->isScoreLoaded());
+
+	dtw->start();
+	dtw->setH(160);
 	
 	while (getline(fileX, line)) {
 		int length = sscanf(line.c_str(), "%*lf, %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf ",
@@ -90,10 +94,22 @@ BOOST_AUTO_TEST_CASE(file_inputs)
 			&f_feat[35], &f_feat[36], &f_feat[37], &f_feat[38], &f_feat[39]);
 		BOOST_CHECK (length == params);
 		dtw->processLiveFV(f_feat);
+		BOOST_TEST_MESSAGE ("now at t = " << dtw->getT() << " h = "<< dtw->getH());
 	}
 
 	BOOST_CHECK(dtw->getT() == xsize);
-	BOOST_CHECK(!dtw->isRunning());
+	BOOST_CHECK_MESSAGE(!dtw->isRunning(), "still running! h is " << dtw->getH());
+
+	int thresh = 20;
+	int Xmarker[8] = {9, 249, 580, 786, 1092, 1358, 1713, 1979};
+	int Ymarker[8] = {170, 384, 605, 825, 1048, 1264, 1545, 1872};
+
+
+	for (int i = 0; i < 8; i++) {
+		BOOST_CHECK_MESSAGE(abs((int)dtw->getHistory(Xmarker[i]) - Ymarker[i]) <= thresh,
+			"marker "<< i <<" failed! real = "<<dtw->getHistory(Xmarker[i]) << "; ideal = " << Ymarker[i]);
+	}
+
 }
 
 // ===============================================
