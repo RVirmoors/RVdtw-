@@ -77,9 +77,9 @@ void oDTW::processLiveFV(double *tfeat) {
         for (i=0; i < params; i++) {
             x[t%bsize][i] = tfeat[i];
         }
-        dtw_process(); // compute oDTW path
-        if(back_active)
-			dtw_back(); // calculate backwards DTW
+        if (dtw_process()) // compute oDTW path until we reach h == ysize
+			if(back_active)
+				dtw_back(); // calculate backwards DTW
     }
 }
 
@@ -367,7 +367,8 @@ bool oDTW::dtw_process() {
         return true;
     }
 	
-
+	increment_t();
+	history[t] = h;
     return false; 
 }
 

@@ -1,7 +1,7 @@
 #define BOOST_TEST_MODULE online DTW test module
 // #define BOOST_TEST_DYN_LINK
 #include <boost/test/unit_test.hpp>
-//#include <iostream>
+#include <iostream>
 #include <fstream>
 #include <math.h>
 #include <cstdint>
@@ -36,13 +36,14 @@ BOOST_AUTO_TEST_CASE(identical)
 BOOST_AUTO_TEST_CASE(file_inputs)
 {
 	// BOOST_DATA_TEST_CASE causes compile errors, so let's do it like this:
-	for (int testno = 0; testno < 1; testno++) {
+	for (int testno = 0; testno < 2; testno++) { // number of test file pairs!
 		BOOST_TEST_MESSAGE (" ===== RUNNING FILE TEST # " << testno << " =====");
 
 		string Xname = "fileX" + to_string((long long)testno) + ".txt";
 		string Yname = "fileY" + to_string((long long)testno) + ".txt";
 
-		oDTW *dtw = new oDTW;//(256, 256, false, 12);
+		// DTW params! caution: "true" takes a lot more processing power due to back-DTW
+		oDTW *dtw = new oDTW(128, 512, true, 12);//(256, 256, false, 12);
 		ifstream fileX(Xname); 
 		ifstream fileY(Yname); 
 		double f_feat[50];
@@ -58,8 +59,8 @@ BOOST_AUTO_TEST_CASE(file_inputs)
 
 		BOOST_REQUIRE (xsize);
 		BOOST_REQUIRE (ysize);
-		BOOST_TEST_MESSAGE (" X size is " << xsize);
-		BOOST_TEST_MESSAGE (" Y size is " << ysize);
+		BOOST_TEST_MESSAGE (" X (live)  size is " << xsize);
+		BOOST_TEST_MESSAGE (" Y (score) size is " << ysize);
 		fileX.seekg(0);
 		fileY.seekg(0);
 
@@ -94,7 +95,6 @@ BOOST_AUTO_TEST_CASE(file_inputs)
 		BOOST_CHECK(dtw->isScoreLoaded());
 
 		dtw->start();
-		//dtw->setH(1295);
 		iter = 0;
 	
 		while (getline(fileX, line)) {
@@ -110,20 +110,24 @@ BOOST_AUTO_TEST_CASE(file_inputs)
 			BOOST_CHECK (length == params);
 
 			if(strstr(line.c_str(), "marker")) {
-				dtw->addMarkerToLive(iter);
-				BOOST_TEST_MESSAGE("added live marker " << iter);
+				if (dtw->addMarkerToLive(iter) % 50 == 0)
+					cout << endl;
+//				BOOST_TEST_MESSAGE("added live marker " << iter);
+				cout << ".";
 			}
 
-			BOOST_TEST_MESSAGE ("now at t = " << dtw->getT() << " h = "<< dtw->getH());
+//			BOOST_TEST_MESSAGE ("now at iter: " << iter <<"; t = " << dtw->getT() << " h = "<< dtw->getH());
 			BOOST_REQUIRE (iter == dtw->getT(), "iter " << iter << " vs t " << dtw->getT());
 			iter ++;
 		
 			BOOST_TEST_CHECKPOINT ("now at t = " << dtw->getT() << " h = "<< dtw->getH());
 			dtw->processLiveFV(f_feat);
 		}
+		
+		cout << endl;
 
-		BOOST_CHECK_MESSAGE(dtw->getT() == xsize, "still running! t is " << dtw->getT());
-		BOOST_CHECK_MESSAGE(!dtw->isRunning(), "still running! h is " << dtw->getH());
+		BOOST_WARN_MESSAGE(dtw->getT() == xsize, "score end reached early! t is " << dtw->getT());
+		BOOST_WARN_MESSAGE(!dtw->isRunning(), "score end not reached! h is " << dtw->getH());
 
 
 		BOOST_TEST_MESSAGE(" X, Y markers: " << dtw->getMarkerCount());
