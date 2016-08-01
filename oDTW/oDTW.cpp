@@ -43,7 +43,7 @@ unsigned int oDTW::setScoreSize(long v) {
         }
 
         start(); // x, dtw arrays
-        history.resize(ysize);
+        history.resize(ysize * 3); // leave room for t be 3 times longer than h
         b_path.resize(bsize);
         
         markers.clear();
@@ -79,19 +79,29 @@ void oDTW::processLiveFV(double *tfeat) {
         }
         dtw_process(); // compute oDTW path
         if(back_active)
-			dtw_back(); // calculate backwards DTW for tempo
+			dtw_back(); // calculate backwards DTW
     }
 }
 
 void oDTW::addMarkerToScore(unsigned int frame) {
-    markers[m_iter][M_SCORED] = frame;
-    m_count++;
-    m_iter++;
+	if (frame) {
+		markers[m_iter][M_SCORED] = frame;
+	} else {
+		markers[m_iter][M_SCORED] = iter-1;
+	}
+	m_count++;
+	m_iter++;
 }
 
-void oDTW::addMarkerToLive(unsigned int frame) {
-    markers[m_ideal_iter][M_IDEAL] = frame;
-    m_ideal_iter++;
+unsigned int oDTW::addMarkerToLive(unsigned int frame) {
+	if (m_ideal_iter < m_count) {
+		if (frame)
+			markers[m_ideal_iter][M_IDEAL] = frame;
+		else
+			markers[m_ideal_iter][M_IDEAL] = t;
+		m_ideal_iter++;
+	}
+	return m_ideal_iter;
 }
 
 unsigned int oDTW::getMarkerFrame(long here) {
@@ -102,7 +112,7 @@ unsigned int oDTW::getMarkerCount() {
     return m_count;
 }
 
-unsigned int oDTW::getMarker(unsigned int i, unsigned int j) {
+double oDTW::getMarker(unsigned int i, unsigned int j) {
     if (i <= m_count && j < 5)
         return markers[i][j];
     else
@@ -370,9 +380,10 @@ void oDTW::increment_h() {
     h++;
     h_mod = (h_mod+1)%fsize;
     
-   // if (h >= markers[m_iter][M_SCORED]) {
+    if (h >= markers[m_iter][M_SCORED]) {
         //if (h_real >= markers[m_iter][M_SCORED]) {
-   //     markers[m_iter][M_LIVE] = t; // marker detected at time "t"
+        markers[m_iter][M_LIVE] = t; // marker detected at time "t"
+		m_iter++;
         //markers[m_iter][M_HOOK] = dtw_certainty;
         /* TO DO
         markers[m_iter][M_ACC] = h_real;
@@ -383,7 +394,7 @@ void oDTW::increment_h() {
         if (m_iter < m_count)
             m_iter++;
          */
-    //}
+    }
 }
 
 bool oDTW::decrease_h() {

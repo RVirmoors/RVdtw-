@@ -494,7 +494,7 @@ void Raskell::feats(t_uint16 argc) {
 
 		if (input_sel == IN_SCORE) { // build Y matrix (offline)
             iter = warp->processScoreFV(tfeat);
-            post("processed frame: %d -> %f", iter, tfeat[0]);
+           // post("processed frame: %d -> %f", iter, tfeat[0]);
             
             if (warp->isScoreLoaded()) { // if iter == ysize
                 post("SCORE data fully loaded: %i frames, %i ACC beats, %i Y beats.",
@@ -585,8 +585,8 @@ void Raskell::marker(t_symbol *s) {
         warp->addMarkerToScore(iter);
 	}
     else if (input_sel == IN_LIVE) {
-        warp->addMarkerToLive(iter);
-        //post("Marker (ideal) entered at position %i", iter);
+        unsigned int i = warp->addMarkerToLive(iter);
+//        post("Marker (ideal) entered at position %i : %i", i, warp->getMarker(i-1, M_IDEAL));
 	}
 }
 

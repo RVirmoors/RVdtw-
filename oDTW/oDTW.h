@@ -25,12 +25,9 @@
 #define MAXLENGTH 500000 //maximum input file length (# of frames)
 #define VERY_BIG  (1e10)
 #define MAX_RUN 64// 3 //64//50000    minimum 4; should not surpass fsize
-#define ALPHA 1
-#define MID 0.5 //0.5; //1.9; //1.5
-#define SIDE 1
-#define SEN 1 // 0.9 // 0.98//1
-#define ELA 1 // 1
-
+#define ALPHA 0.1 //1
+#define MID 1 //0.5; //1.9; //1.5
+#define SIDE 2
 
 
 using namespace std;
@@ -54,10 +51,10 @@ public:
 	void processLiveFV(double *tfeat);
 
 	// add a Marker to the Score ref.
-	void addMarkerToScore(unsigned int frame);
+	void addMarkerToScore(unsigned int frame = 0);
 
-	// add a Marker to the Live target (should be used for testing only)
-	void addMarkerToLive(unsigned int frame);
+	// add a Marker to the Live target. Returns the # of the added marker.
+	unsigned int addMarkerToLive(unsigned int frame = 0);
     
     // get frame number for a certain (score) marker
     unsigned int getMarkerFrame(long here);
@@ -66,7 +63,7 @@ public:
     unsigned int getMarkerCount();
     
     // get markers
-    unsigned int getMarker(unsigned int i, unsigned int j);
+    double getMarker(unsigned int i, unsigned int j);
     
 	// empty all the internal vars, except the Score, and point back to the start.
 	void start();

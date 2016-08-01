@@ -52,6 +52,9 @@ Version history:
 #define COMP_RELEASE 2
 #define COMP_RATIO 8
 
+#define SEN 1 // 0.9 // 0.98//1
+#define ELA 1 // 1
+
 
 using namespace std;
 
