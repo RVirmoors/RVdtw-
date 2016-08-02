@@ -8,7 +8,7 @@ oDTW::oDTW(int windowSize_, int backWindowSize_, bool backActive_, unsigned int 
         params(params_)
 {
     ysize = t = h = runCount = iter = m_iter = m_ideal_iter = t_mod = h_mod = 0; // current position for online DTW: (t,h)
-    b_avgerr = b_start = bh_start = 0; // backwards DTW vars
+    b_start = bh_start = 0; // backwards DTW vars
     score_loaded = false;
     
     m_count = 0; // one marker is mandatory (to start)
@@ -122,7 +122,7 @@ double oDTW::getMarker(unsigned int i, unsigned int j) {
 
 void oDTW::start() {
     t = t_mod = h = h_mod = runCount = m_iter = m_ideal_iter = 0; // current position for online DTW: (t,h)
-    b_avgerr = b_start = bh_start = 0;
+    b_start = bh_start = 0;
     previous = 0; // 0 = none; 1 = Row; 2 = Column; 3 = Both
     top_weight = bot_weight = SIDE;
     
@@ -513,8 +513,6 @@ void oDTW::dtw_back() {
         }
         
         b_err[b_start][0] = history[b_t] - b_h;
-        b_avgerr += b_err[b_start][0] / 40;
-        b_avgerr -= b_err[(b_start-40+bsize)%bsize][0] / 40;
         //float diff = b_err[b_start][0] - b_err[(b_start-1+bsize)%bsize][0];
         //if (diff < 0)
         //	b_err[b_start][0] -= diff / 2;

@@ -258,6 +258,7 @@ Raskell::Raskell() {
 		//b_avgerr = b_start = bh_start = 0;
 		tempo = tempo_avg = 1;
 		tempotempo = 0;
+		h_real = 0;
 //		m_count = 0; // one marker is mandatory (to start)
 //		previous = 0; // 0 = none; 1 = Row; 2 = Column; 3 = Both
 		input_sel = IN_SCORE; // 1 = SCORE; 2 = LIVE; 0 = closed
@@ -285,7 +286,7 @@ Raskell::Raskell() {
 		chroma->setChromaCalculationInterval(WINDOW_SIZE);
 		chr.clear();
 		chr.resize(12);
-        warp = new oDTW(128, 512, false);
+        warp = new oDTW(128, 512, true);
 
 		l_buffer_reference = NULL;
 		score_name = live_name = "";
@@ -482,7 +483,7 @@ int Raskell::calc_beat_diff(double cur_beat, double prev_beat, double ref_beat) 
 }
 
 void Raskell::feats(t_uint16 argc) {
-	post("processing feat %d : %f ", iter, tfeat[0]);
+//	post("processing feat %d : %f ", iter, tfeat[0]);
 
 	if ((ysize > 0) && (input_sel > 0))  { // Y matrix was init'd, let's populate it
 		if (params != argc) {
@@ -529,7 +530,7 @@ void Raskell::feats(t_uint16 argc) {
 			iter++;
             warp->processLiveFV(tfeat);
 			// build X matrix (online)
-            //post ("h = %i, ysize = %i", warp->getH(), ysize);
+//            post ("h = %i, ysize = %i", warp->getH(), ysize);
 
             if (warp->isRunning()) {
                 // output new step
@@ -537,28 +538,28 @@ void Raskell::feats(t_uint16 argc) {
                 t_uint16 h = warp->getH();
                 outlet_int(max->out_t, t);
                 if (t && (h >= warp->getHistory(t-1)))
-                    outlet_int(max->out_h, h);/*
+                    outlet_int(max->out_h, h);
+
                 // output certainty
-                atom_setsym(dump, gensym("b_err"));
-                atom_setlong(dump+1, b_err[b_start][0]); // TODO
-//                atom_setfloat(dump+2, b_avgerr);
-                atom_setfloat(dump+3, tempo_avg);
-                outlet_list(max->out_dump, 0L, 4, dump);
-                
-                b_err = warp->getBackPath();
-                bsize = b_err.size();
+				b_err = warp->getBackPath();
+				bsize = b_err.size();
 //                post("bsize is %i", bsize);
                 b_start = t % bsize;
-                
+
+                atom_setsym(dump, gensym("b_err"));
+                atom_setlong(dump+1, b_err[b_start][0]);
+                atom_setfloat(dump+2, tempo_avg);
+                outlet_list(max->out_dump, 0L, 3, dump);
+
                 int step = bsize / 4;
                 
                 if (t > step * 2) {
                     tempo_avg += b_err[(b_start- step   +bsize)%bsize][3] / step;
                     tempo_avg -= b_err[(b_start-(step*2)+bsize)%bsize][3] / step;
                 }
-                */
+                
                 // choose tempo model: oDTW-based or beat-based
-//                beat_switch();
+                beat_switch();
             }
             else {
                 post("End reached!");
@@ -996,8 +997,10 @@ void Raskell::beat_switch() {
     
 	double beat_tempo = calc_beat_tempo();
     int beat_length = (acc_iter) ? acc_beats[0][acc_iter] - acc_beats[0][acc_iter-1] : fsize;
-
+	
 	static int waiting = 0;
+	int step = bsize / 4;
+	
 	// sensitivity to tempo fluctuations:
 	if (abs(error) > pow(1.f-sensitivity, 2)*100.f + abs(minerr)) {
 		post ("waiting %i . tempo %f - %f beat_tempo", waiting, tempo_avg, beat_tempo);
@@ -1025,7 +1028,7 @@ void Raskell::beat_switch() {
 	}
 
 	if(waiting > 0) waiting--;
-
+	
 	if (tempo > 0.01) {
 		if (tempo < 3 && tempo > 0.33) {
 			outlet_float(max->out_tempo, tempo);
@@ -1040,6 +1043,8 @@ void Raskell::beat_switch() {
 			//h_mod = h%fsize;
 		}
 	}
+	
+//	post("%f %d %d", h_real, ysize, tempo_mode);
 	// output real H
 	if (h_real > 8 && !(t % 9)) {
 		atom_setsym(dump, gensym("h_real"));
@@ -1053,11 +1058,6 @@ void Raskell::beat_switch() {
 }
 
 double Raskell::calc_beat_tempo() {
-	/*if (beat->beatDueInCurrentFrame()) {
-		post ("h= %d becomes %f", h, h_real);
-		h = h_real;
-		h_mod = h%fsize;
-	}*/
 	return (beat->getCurrentTempoEstimate() / ref_tempo);
 }
 
@@ -1191,7 +1191,7 @@ bool Raskell::read_line() {
 		if(strstr(buf, " beat")) {
 			y_beats[0].push_back(iter);  // beat pos
 			y_beats[1].push_back(0);	// diff from acco beat (computed below in feats())
-			post("new Y beat at %d", iter);
+			//post("new Y beat at %d", iter);
 		}
 		char* beat_temp = strstr(buf, "accobeat");
 		if(beat_temp) {
