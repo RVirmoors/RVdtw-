@@ -166,6 +166,7 @@ public:
 	//Gist<double> *gist;
 	BTrack *beat;
 	Chromagram *chroma;
+	vector<double> chr;
     oDTW *warp;
 
 	//		beat tracking vars:

@@ -35,15 +35,15 @@ BOOST_AUTO_TEST_CASE(identical)
 
 BOOST_AUTO_TEST_CASE(file_inputs)
 {
-	// BOOST_DATA_TEST_CASE causes compile errors, so let's do it like this:
-	for (int testno = 0; testno < 2; testno++) { // number of test file pairs!
+	// BOOST_DATA_TEST_CASE causes compile errors in vs2010, so let's do it like this:
+	for (int testno = 0; testno < 1; testno++) { // !! number of file pairs to be tested !!
 		BOOST_TEST_MESSAGE (" ===== RUNNING FILE TEST # " << testno << " =====");
 
 		string Xname = "fileX" + to_string((long long)testno) + ".txt";
 		string Yname = "fileY" + to_string((long long)testno) + ".txt";
 
-		// DTW params! caution: "true" takes a lot more processing power due to back-DTW
-		oDTW *dtw = new oDTW(128, 512, true, 12);//(256, 256, false, 12);
+		// !! DTW params!! caution: "true" takes a lot more processing power due to back-DTW
+		oDTW *dtw = new oDTW(128, 512, false, 12);//(256, 256, false, 12);
 		ifstream fileX(Xname); 
 		ifstream fileY(Yname); 
 		double f_feat[50];
@@ -137,7 +137,7 @@ BOOST_AUTO_TEST_CASE(file_inputs)
 //								to_string((long double)dtw->getMarker(i, M_SCORED)));
 		}
 
-		int thresh = 20;
+		int thresh = 25;
 		for (int i = 0; i < dtw->getMarkerCount(); i++) {
 			int Xmarker = dtw->getMarker(i, M_LIVE);
 			int Ymarker = dtw->getMarker(i, M_SCORED);

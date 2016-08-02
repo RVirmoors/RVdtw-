@@ -233,7 +233,8 @@ t_int *RVdtw_perform(t_int *w) {
 	t_float *in = (t_float *)(w[2]);
 	int n = (int)w[3];
 
-	x->rv->perform((double *)in, n, B_SOLO);
+	if (!x->rv->zeros((double *)in, n))
+		x->rv->perform((double *)in, n, B_SOLO);
 	// you have to return the NEXT pointer in the array OR MAX WILL CRASH
 	return w + 5;
 }
@@ -243,7 +244,8 @@ t_int *RVdtw_perform(t_int *w) {
 void RVdtw_perform64(t_RVdtw *x, t_object *dsp64, double **ins, long numins, double **outs, long numouts, long sampleframes, long flags, void *userparam) {
 	t_double *in = ins[0];		// we get audio for each inlet of the object from the **ins argument
 	int n = sampleframes;
-	x->rv->perform(in, n, B_SOLO);
+	if (!x->rv->zeros(in, n))
+		x->rv->perform(in, n, B_SOLO);
 }
 
 
@@ -281,7 +283,9 @@ Raskell::Raskell() {
 		beat = new BTrack();
 		chroma = new Chromagram(WINDOW_SIZE, SampleRate); 
 		chroma->setChromaCalculationInterval(WINDOW_SIZE);
-        warp = new oDTW();
+		chr.clear();
+		chr.resize(12);
+        warp = new oDTW(128, 512, false);
 
 		l_buffer_reference = NULL;
 		score_name = live_name = "";
@@ -370,7 +374,7 @@ void Raskell::perform(double *in, long sampleframes, int dest) {
 
 			} else if(y_beats[0].size() && h_real) { // looking at live target
 				float diff_y, diff_acc;
-				//post("live beat! %d", h);
+//				post("live beat! %d", warp->getH());
 				// check if live beat aligns with predicted beats
 				b_iter = update_beat_iter(b_iter, &y_beats[0], h_real);
 				diff_y = calc_beat_diff(h_real, prev_h_beat, y_beats[0][b_iter]);
@@ -411,52 +415,48 @@ void Raskell::perform(double *in, long sampleframes, int dest) {
 			break;
 		}	
 	}
-
-//	if (dest == B_ACCO || warp->isRunning()) {
 		
-		//post("in %f", in[0]);
-		std::vector<double> chr;
-		t_uint32 i, j;
-		//post("adding %d samples to frames of %d size", sampleframes, WINDOW_SIZE);
-		for (i=0; i < sampleframes; i++) {
-			add_sample_to_frames(in[i]);
-		}
-		for(i=0; i<active_frames; i++) {
-			if(frame_index[i]==0) {		// if frame is full, then compute feature vector
-				//post("frame is full # %d. first sample: %f", iter, frame[i][0]);
-				if (dest != B_ACCO) {
-					if (zeros(in, sampleframes)) {
-						for (i=0; i<params; i++)
-							tfeat[i] = 0.0001;
-					}
-					else {
-						switch (features) {
-							case (MFCCS) :	
-								for(j=0; j<WINDOW_SIZE; j++)
-									frame[i][j] *= window[j]; // apply hamming window
-								calc_mfcc(i); // get tfeat[]
-								// if signal is loud enough, then compress the first MFCC coefficient (loudness)
-								if (tfeat[0] > COMP_THRESH) 
-									tfeat[0] = compress(tfeat[0], true);//tfeat[0] /= 8;
-								else tfeat[0] = compress(tfeat[0], false);
-								break;					
-							case (CHROMA) :
-								chroma->processAudioFrame(frame[i]);
-								if (chroma->isReady()) {
-									chr = chroma->getChromagram();						
-									tfeat = &chr[0];
-								}
-								break;
-						}
-					}
-
-					feats(params);
+	//post("in %f", in[0]);
+	t_uint32 i, j;
+	//post("adding %d samples to frames of %d size", sampleframes, WINDOW_SIZE);
+	for (i=0; i < sampleframes; i++) {
+		add_sample_to_frames(in[i]);
+	}
+	for(i=0; i<active_frames; i++) {
+		if(frame_index[i]==0) {		// if frame is full, then compute feature vector
+			//post("frame is full # %d. first sample: %f", iter, frame[i][0]);
+			if (dest != B_ACCO) {
+				if (zeros(in, sampleframes)) {
+					for (i=0; i<params; i++)
+						tfeat[i] = 0.0001;
 				}
-				if (dest == B_ACCO)
-					acc_iter++; // count frames for ACCO beat marking
+				else {
+					switch (features) {
+						case (MFCCS) :	
+							for(j=0; j<WINDOW_SIZE; j++)
+								frame[i][j] *= window[j]; // apply hamming window
+							calc_mfcc(i); // get tfeat[]
+							// if signal is loud enough, then compress the first MFCC coefficient (loudness)
+							if (tfeat[0] > COMP_THRESH) 
+								tfeat[0] = compress(tfeat[0], true);//tfeat[0] /= 8;
+							else tfeat[0] = compress(tfeat[0], false);
+							break;					
+						case (CHROMA) :
+							chroma->processAudioFrame(frame[i]);
+							if (chroma->isReady()) {
+								chr = chroma->getChromagram();						
+								tfeat = &chr[0];
+//								post("chroma %f %f %f", chr[0], chr[1], chr[2]);
+							}
+							break;
+					}
+				}
+				feats(params);
 			}
+			if (dest == B_ACCO)
+				acc_iter++; // count frames for ACCO beat marking
 		}
-//	}
+	}
 }
 
 t_uint16 Raskell::update_beat_iter(t_uint16 beat_iter, vector<float> *beat_vector, double ref_beat) {
@@ -482,7 +482,7 @@ int Raskell::calc_beat_diff(double cur_beat, double prev_beat, double ref_beat) 
 }
 
 void Raskell::feats(t_uint16 argc) {
-	//post("processing feats %f ", tfeat[0]);
+	post("processing feat %d : %f ", iter, tfeat[0]);
 
 	if ((ysize > 0) && (input_sel > 0))  { // Y matrix was init'd, let's populate it
 		if (params != argc) {
@@ -532,15 +532,15 @@ void Raskell::feats(t_uint16 argc) {
             //post ("h = %i, ysize = %i", warp->getH(), ysize);
 
             if (warp->isRunning()) {
-                // calculate next DTW step
+                // output new step
                 t_uint16 t = warp->getT();
                 t_uint16 h = warp->getH();
                 outlet_int(max->out_t, t);
                 if (t && (h >= warp->getHistory(t-1)))
-                    outlet_int(max->out_h, h);
+                    outlet_int(max->out_h, h);/*
                 // output certainty
                 atom_setsym(dump, gensym("b_err"));
-//                atom_setlong(dump+1, b_err[b_start][0]); // TODO
+                atom_setlong(dump+1, b_err[b_start][0]); // TODO
 //                atom_setfloat(dump+2, b_avgerr);
                 atom_setfloat(dump+3, tempo_avg);
                 outlet_list(max->out_dump, 0L, 4, dump);
@@ -556,9 +556,9 @@ void Raskell::feats(t_uint16 argc) {
                     tempo_avg += b_err[(b_start- step   +bsize)%bsize][3] / step;
                     tempo_avg -= b_err[(b_start-(step*2)+bsize)%bsize][3] / step;
                 }
-                
+                */
                 // choose tempo model: oDTW-based or beat-based
-                beat_switch();
+//                beat_switch();
             }
             else {
                 post("End reached!");
@@ -585,7 +585,7 @@ void Raskell::marker(t_symbol *s) {
         warp->addMarkerToScore(iter);
 	}
     else if (input_sel == IN_LIVE) {
-        unsigned int i = warp->addMarkerToLive(iter);
+        unsigned int i = warp->addMarkerToLive();
 //        post("Marker (ideal) entered at position %i : %i", i, warp->getMarker(i-1, M_IDEAL));
 	}
 }
@@ -1159,30 +1159,23 @@ void Raskell::file_open(char *name) {
 }
 
 bool Raskell::read_line() {	
-	double f_feat[50];
 	t_uint16 i;
 	char buf[1024];
-	for(i=0; i<params; i++)
-		f_feat[i] = 0;
 	while ( sgets( buf, sizeof( buf )) ) { //&& i) {
-		int length = sscanf(buf, "%lf, %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf ",
-			&f_feat[0], &f_feat[1], &f_feat[2], &f_feat[3], &f_feat[4], 
-			&f_feat[5], &f_feat[6], &f_feat[7], &f_feat[8], &f_feat[9],  
-			&f_feat[10], &f_feat[11], &f_feat[12], &f_feat[13], &f_feat[14], 
-			&f_feat[15], &f_feat[16], &f_feat[17], &f_feat[18], &f_feat[19], 
-			&f_feat[20], &f_feat[21], &f_feat[22], &f_feat[23], &f_feat[24], 
-			&f_feat[25], &f_feat[26], &f_feat[27], &f_feat[28], &f_feat[29],
-			&f_feat[30], &f_feat[31], &f_feat[32], &f_feat[33], &f_feat[34], 
-			&f_feat[35], &f_feat[36], &f_feat[37], &f_feat[38], &f_feat[39], &f_feat[40]);
-		if(length > (params+1) && input_sel != IN_LIVE) {
+		int length = sscanf(buf, "%*lf, %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf ",
+			&tfeat[0], &tfeat[1], &tfeat[2], &tfeat[3], &tfeat[4], 
+			&tfeat[5], &tfeat[6], &tfeat[7], &tfeat[8], &tfeat[9],  
+			&tfeat[10], &tfeat[11], &tfeat[12], &tfeat[13], &tfeat[14], 
+			&tfeat[15], &tfeat[16], &tfeat[17], &tfeat[18], &tfeat[19], 
+			&tfeat[20], &tfeat[21], &tfeat[22], &tfeat[23], &tfeat[24], 
+			&tfeat[25], &tfeat[26], &tfeat[27], &tfeat[28], &tfeat[29],
+			&tfeat[30], &tfeat[31], &tfeat[32], &tfeat[33], &tfeat[34], 
+			&tfeat[35], &tfeat[36], &tfeat[37], &tfeat[38], &tfeat[39]);
+		if(length > params && input_sel != IN_LIVE) {
 			post("NOTE: number of params increased to %i", params);
-			params = length-1; // set number of parameters (increase if necessary)
+			params = length; // set number of parameters (increase if necessary)
 			warp->setParams(params);
 		}
-
-		for(t_uint16 i=0; i<params; i++) 
-			// f_feat[0] = order no.
-			tfeat[i] = f_feat[i+1];
 		
 		switch (features) {
 		case (MFCCS) :
@@ -1198,7 +1191,7 @@ bool Raskell::read_line() {
 		if(strstr(buf, " beat")) {
 			y_beats[0].push_back(iter);  // beat pos
 			y_beats[1].push_back(0);	// diff from acco beat (computed below in feats())
-			//post("new Y beat at %d", iter);
+			post("new Y beat at %d", iter);
 		}
 		char* beat_temp = strstr(buf, "accobeat");
 		if(beat_temp) {
