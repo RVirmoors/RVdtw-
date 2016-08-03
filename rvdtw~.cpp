@@ -292,7 +292,7 @@ Raskell::Raskell() {
 		score_name = live_name = "";
 		
 		features = CHROMA;
-		tempo_model = T_PID;
+		tempo_model = T_DEQ;
         params = m = 12;
 //		tfeat = malloc(m * sizeof(double));
     
@@ -526,7 +526,7 @@ void Raskell::feats(t_uint16 argc) {
             }
 		}
 	
-		if (input_sel == IN_LIVE) { // new X feature entered
+		if (input_sel == IN_LIVE && warp->isScoreLoaded()) { // new X feature entered
 			iter++;
             warp->processLiveFV(tfeat);
 			// build X matrix (online)
@@ -781,7 +781,7 @@ double Raskell::compress(double value, bool active) {
 	return value;
 }
 
-// ========================= DTW ============================
+// ========================= TEMPO ============================
 
 
 double Raskell::calc_tempo(int mode) {
@@ -791,6 +791,8 @@ double Raskell::calc_tempo(int mode) {
     unsigned int h = warp->getH();
     
 	int second = SampleRate / HOP_SIZE; // number of frames per second
+	int step = bsize / 40;
+
 	static double last_tempo = 1;
 	double new_tempo = tempo;
 	static t_int16 last_beat = 1;
@@ -856,8 +858,10 @@ double Raskell::calc_tempo(int mode) {
 			// get tempo pivots from history via deque: http://www.infoarena.ro/deque-si-aplicatii
 			// first pivot is within L steps from path origin
 			// 2nd pivot is at least K steps away from 1st, AND minimizes SUM(var_tempo[pivots])
-			if (t < bsize || h < bsize)
-				new_tempo = warp->getHistory(t) - warp->getHistory(t-1); // not yet active
+			if (t < bsize || h < bsize) {
+				new_tempo = 1;//warp->getHistory(t) - warp->getHistory(t-1); // not yet active
+//				post("EARLY");
+			}
 			else {				
 				pivot1_t = pivot1_h = pivot2_t = pivot2_h = 0;
 				pivot1_tp = pivot2_tp = 1;
@@ -869,30 +873,33 @@ double Raskell::calc_tempo(int mode) {
 					if (j < L) { // if i < L
 						bool popped = false;
 						if (!Deque.empty()) {
-							float derr_i = abs(b_err[(i-40+bsize)%bsize][3] - b_err[(i-41+bsize)%bsize][3]) +
-								abs(b_err[(i-41+bsize)%bsize][3] - b_err[(i-42+bsize)%bsize][3]);
-							float derr_q = abs(b_err[(Deque.front())%bsize][3] - 
-												b_err[(Deque.front()-1+bsize)%bsize][3]) + 
-											abs(b_err[(Deque.front()-1+bsize)%bsize][3] - 
-												b_err[(Deque.front()-2+bsize)%bsize][3])	;
+							float derr_i = 0;	// v_t1
+							float derr_q = 0;	// v_t2
+							for (int it = 0; it < step; it++) { // summing tempo deviations
+								derr_i += abs(b_err[(i+it - step + bsize) %bsize][3] - 
+											  b_err[(i+it+1-step + bsize) %bsize][3]);
+								derr_q += abs(b_err[(Deque.front() - it+bsize)%bsize][3] - 
+											  b_err[(Deque.front()-1-it+bsize)%bsize][3]);
+							}
 							while (!Deque.empty() && derr_i < derr_q) {
 								Deque.pop_front();   
 								popped = true;
 							}					
 						}
-						if (popped || Deque.empty()) Deque.push_front((i-40+bsize)%bsize);
+						if (popped || Deque.empty()) Deque.push_front((i-step+bsize)%bsize);
 					}
 					if (!Deque.empty()) {
-						t_uint16 iplusK = (i-40-K+bsize)%bsize;
-						float derr_ipK = abs(b_err[(iplusK)%bsize][3] - 
-												b_err[(iplusK-1+bsize)%bsize][3]) +
-											abs(b_err[(iplusK-1+bsize)%bsize][3] - 
-												b_err[(iplusK-2+bsize)%bsize][3]);
-						float derr_q = abs(b_err[(Deque.front())%bsize][3] - 
-												b_err[(Deque.front()-1+bsize)%bsize][3]) +
-										abs(b_err[(Deque.front()-1+bsize)%bsize][3] - 
-												b_err[(Deque.front()-2+bsize)%bsize][3]);
+						t_uint16 iplusK = (i-step-K+bsize)%bsize;
+						float derr_ipK = 0;
+						float derr_q = 0;
+						for (int it = 0; it < step; it++) { // summing tempo deviations
+							derr_ipK += abs(b_err[(iplusK- it  + bsize)%bsize][3] - 
+											b_err[(iplusK-it-i + bsize)%bsize][3]);
+							derr_q   +=	abs(b_err[(Deque.front()- it  + bsize)%bsize][3] - 
+											b_err[(Deque.front()-it-1 +	bsize)%bsize][3]);
+						}
 						Sum = derr_q + derr_ipK;
+//						post("Sum is %f, Min is %f", Sum, Min);
 						if (Sum <= Min) {
 							if (Sum < Min) {
 								// if found new Min
@@ -940,9 +947,12 @@ double Raskell::calc_tempo(int mode) {
 			if (t < bsize || h < bsize)
 				new_tempo = 1;//history[t] - history[t-1]; // not yet active
 			else {
-				int i = (b_start-40+bsize)%bsize, j = 0;
-				float derr_i = abs(b_err[(i-40+bsize)%bsize][3] - b_err[(i-41+bsize)%bsize][3]) +
-								abs(b_err[(i-41+bsize)%bsize][3] - b_err[(i-42+bsize)%bsize][3]);
+				int i = (b_start-step+bsize)%bsize, j = 0;
+				float derr_i = 0;
+				for (int it = 0; it < step; it++) { // summing tempo deviations
+					derr_i += abs(b_err[(i+it - step + bsize) %bsize][3] - 
+									b_err[(i+it+1-step + bsize) %bsize][3]);
+				}
 				while (j < 2*K && b_err[i][1] > t_passed + 4) {
 					if(derr_i == 0) {
 						got_new_tempo = true;
@@ -1003,10 +1013,10 @@ void Raskell::beat_switch() {
 	
 	// sensitivity to tempo fluctuations:
 	if (abs(error) > pow(1.f-sensitivity, 2)*100.f + abs(minerr)) {
-		post ("waiting %i . tempo %f - %f beat_tempo", waiting, tempo_avg, beat_tempo);
+//		post ("waiting %i . tempo %f - %f beat_tempo", waiting, tempo_avg, beat_tempo);
 		if (abs(b_err[b_start][0]) > 15 && abs(tempo_avg - beat_tempo) > 0.15) {
 			// DTW is way off, beat tracker takes over
-			post("big error! %f != %f", tempo_avg, beat_tempo);
+//			post("big error! %f != %f", tempo_avg, beat_tempo);
 			waiting = (int)(fsize / beat_length) * beat_length;
 		}
 		if (waiting) {
@@ -1016,7 +1026,7 @@ void Raskell::beat_switch() {
 			if (tempo_mode == 2) {
 				h_real = h;
 				h_real += tempo;
-				post("moved H_real to H");
+				post("moved H_real back to H");
 			}
 			tempo = calc_tempo(tempo_model);	
 			tempo_mode = 1;
@@ -1034,17 +1044,13 @@ void Raskell::beat_switch() {
 			outlet_float(max->out_tempo, tempo);
 			h_real += tempo;
 		} else {
-			post("OUT OF CONTROL tempo = %f", tempo);
+//			post("OUT OF CONTROL tempo = %f", tempo);
 			tempo = beat_tempo;			
 			h_real += tempo;
 			waiting = (int)(fsize / beat_length) * beat_length;
-			//h_real = h;
-			//h = h_real;
-			//h_mod = h%fsize;
 		}
 	}
 	
-//	post("%f %d %d", h_real, ysize, tempo_mode);
 	// output real H
 	if (h_real > 8 && !(t % 9)) {
 		atom_setsym(dump, gensym("h_real"));

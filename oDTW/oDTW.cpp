@@ -448,10 +448,10 @@ void oDTW::dtw_back() {
     b_start = t % bsize;
     bh_start = h % bsize;
     
-    b_err[b_start][0] = 0.f; // to be computed after t > bsize, below
+    b_err[b_start][0] = 0.f; // error; to be computed after t > bsize, below
     b_err[b_start][1] = t;
     b_err[b_start][2] = h;
-    b_err[b_start][3] = 1.f; // local tempo:
+    b_err[b_start][3] = 1.f; // local tempo
     
     if (t >= bsize && h >= bsize) { //&& (t % 2)
         double top, mid, bot, cheapest;
