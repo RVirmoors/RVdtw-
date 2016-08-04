@@ -548,7 +548,7 @@ void oDTW::dtw_back() {
             top_weight = bot_weight = SIDE;
         }
 //     }
-        int step = bsize / 4;
+        int step = bsize / 8;
         
         if (t > step * 2) {
             // compute local tempo based on back DTW history:

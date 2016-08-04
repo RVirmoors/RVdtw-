@@ -64,7 +64,7 @@ void *RVdtw_new(t_symbol *s, long argc, t_atom *argv) {
 		dsp_setup((t_pxobject *)x, 1);	// MSP inlets: arg is # of inlets
 		// outlets, RIGHT to LEFT:
 		x->out_tempo = floatout((t_object *) x);
-		x->out_feats = listout((t_object *) x);
+		x->out_beats = bangout((t_object *) x);
 		x->out_dump = listout((t_object *) x);
 		x->out_h = intout((t_object *) x);
 		x->out_t = intout((t_object *) x);
@@ -98,7 +98,7 @@ void RVdtw_assist(t_RVdtw *x, void *b, long m, long a, char *s) {
             case 0: sprintf(s, "t"); break;
             case 1: sprintf(s, "h"); break;
             case 2: sprintf(s, "misc dump"); break;                   
-			case 3: sprintf(s, "computed feat frames"); break;
+			case 3: sprintf(s, "bang on beats"); break;
 			case 4: sprintf(s, "tempo multiplier"); break;
         }	
     }
@@ -190,12 +190,12 @@ void RVdtw_follow(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv) {
 
 void RVdtw_sensitivity(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv) {
 	x->rv->sensitivity = atom_getfloat(argv);
-	post("Sensitivity to tempo fluctuations is %f", x->rv->sensitivity);
+	post("Sensitivity to tempo fluctuations is %.2f", x->rv->sensitivity);
 }
 
 void RVdtw_elasticity(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv) {
 	x->rv->elasticity = atom_getfloat(argv);
-	post("Elasticity of tempo model is %f", x->rv->elasticity);
+	post("Elasticity of tempo model is %.2f", x->rv->elasticity);
 }
 
 // this lets us double-click to open up the buffer~ it references
@@ -377,10 +377,10 @@ bool Raskell::zeros(double *in, long sampleframes) {
 void Raskell::perform(double *in, long sampleframes, int dest) {
 
 	beat->processAudioFrame(in);
-//	if(beat->beatDueInCurrentFrame())
-//		post("beat! t= %f", beat->getCurrentTempoEstimate());
-	
+
 	if(beat->beatDueInCurrentFrame()) { // beat detected
+		outlet_bang(max->out_beats);
+
 		switch (dest) {
 		case (B_SOLO) : 
 			if (input_sel != IN_LIVE && iter) { // looking at reference
@@ -565,11 +565,11 @@ void Raskell::feats(t_uint16 argc) {
                 atom_setfloat(dump+2, tempo_avg);
                 outlet_list(max->out_dump, 0L, 3, dump);
 
-                int step = bsize / 4;
+                int step = bsize / 8;
                 
                 if (t > step * 2) {
                     tempo_avg += b_err[(b_start- step   +bsize)%bsize][3] / step;
-                    tempo_avg -= b_err[(b_start-(step*2)+bsize)%bsize][3] / step;
+                    tempo_avg -= b_err[(b_start-(step+8)+bsize)%bsize][3] / step;
                 }
                 
                 // choose tempo model: oDTW-based or beat-based
@@ -816,8 +816,6 @@ double Raskell::calc_tempo(int mode) {
 	bool got_new_tempo = false;
 	int K = second, L = second / 2;
 	t_uint16 counter = 0;
-    
-
 
 	switch(mode) {
 		case T_DTW:
@@ -1023,15 +1021,15 @@ void Raskell::beat_switch() {
     int beat_length = (acc_iter) ? acc_beats[0][acc_iter] - acc_beats[0][acc_iter-1] : fsize;
 	
 	static int waiting = 0;
-	int step = bsize / 4;
+	int step = bsize / 8;
 	
 	// sensitivity to tempo fluctuations:
 	if (abs(error) > pow(1.f-sensitivity, 2)*100.f + abs(minerr)) {
 //		post ("waiting %i . tempo %f - %f beat_tempo", waiting, tempo_avg, beat_tempo);
 		if (abs(b_err[b_start][0]) > 15 && abs(tempo_avg - beat_tempo) > 0.15) {
 			// DTW is way off, beat tracker takes over
-//			post("big error! %f != %f", tempo_avg, beat_tempo);
-			waiting = (int)(fsize / beat_length) * beat_length;
+//			post("oDTW is off, BT on! %f != %f. beat length = %d", tempo_avg, beat_tempo, beat_length);
+			waiting = beat_length;
 		}
 		if (waiting) {
 			tempo = beat_tempo;		

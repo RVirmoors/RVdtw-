@@ -81,7 +81,7 @@ extern "C" {
 
 		void* out_t;
 		void* out_h;
-		void* out_feats;
+		void* out_beats;
 		void* out_tempo;
 		void* out_dump;
 	} t_RVdtw;
