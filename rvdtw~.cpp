@@ -1040,14 +1040,14 @@ void Raskell::beat_switch() {
 			if (tempo_mode == 2) {
 				h_real = h;
 				h_real += tempo;
-				post("moved H_real back to H");
+				post("moved H_real to H");
 			}
 			tempo = calc_tempo(tempo_model);	
 			tempo_mode = 1;
 		}
 	}		
-	else if (abs(error) <= 1 && tempo_mode && t > 40) {
-		tempo = b_err[(b_start-40+bsize)%bsize][3];
+	else if (abs(error) <= 1 && tempo_mode && t > step) {
+		tempo = b_err[(b_start-step+bsize)%bsize][3];
 		tempo_mode = 0;
 	}
 

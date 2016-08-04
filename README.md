@@ -1,5 +1,6 @@
 # RVdtw~
 An online-DTW based performance alignment and tracking external for Max/MSP.
+
 See the included Max help patches for usage instructions. The system architecture is described in this paper:
 
 * "An Online Tempo Tracker for Automatic Accompaniment based on Audio-to-audio Alignment and Beat Tracking", G. Burloiu. In Sound and Music Computing (SMC), 2016.
@@ -19,6 +20,7 @@ Check out the [oDTW](https://github.com/RVirmoors/RVdtw-/tree/master/oDTW) subfo
 ## Compilation
 
 The included VS2010 and Xcode projects should do the trick. Email me if you encounter problems.
+
 I do intend to upgrade to the latest VS at some point.
 
 ### Dependencies
@@ -35,7 +37,7 @@ First you need to install the FFTW & libsamplerate libraries, in the universal (
 ```
 brew install fftw --universal
 ```
-For libsoundfile, download the source ( http://www.mega-nerd.com/SRC/download.html ) and follow the instructions. At the "make" step, use:
+For libsoundfile, download the [source](http://www.mega-nerd.com/SRC/download.html) and follow the instructions. At the "make" step, use:
 ```
 make CXXFLAGS="-arch i386 -arch x86_64" CFLAGS="-arch i386 -arch x86_64" LDFLAGS="-arch i386 -arch x86_64"
 ```
@@ -49,4 +51,4 @@ This code is made available under the GNU General Public License, version 3. Ple
 
 ## Acknowledgments
 
-Many thanks to Adam Stark, whose Chroma and BTrack libraries made this program more solid and interesting :)
+Many thanks to Adam Stark, whose Chroma and BTrack libraries helped make this program more solid and interesting :)
