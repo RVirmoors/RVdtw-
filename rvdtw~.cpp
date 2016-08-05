@@ -1176,13 +1176,12 @@ void Raskell::file_open(char *name) {
 	f_spool = FALSE;
 }
 
-bool Raskell::read_line() {	
-	t_uint16 i;
+bool Raskell::read_line() {
 	char buf[1024];
-	while ( sgets( buf, sizeof( buf )) ) { //&& i) {
-		int length = sscanf(buf, "%*lf, %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf ",
+	while ( sgets( buf, sizeof( buf )) ) {
+		int length = sscanf(buf, "%*lf, %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",
 			&tfeat[0], &tfeat[1], &tfeat[2], &tfeat[3], &tfeat[4], 
-			&tfeat[5], &tfeat[6], &tfeat[7], &tfeat[8], &tfeat[9],  
+			&tfeat[5], &tfeat[6], &tfeat[7], &tfeat[8], &tfeat[9],
 			&tfeat[10], &tfeat[11], &tfeat[12], &tfeat[13], &tfeat[14], 
 			&tfeat[15], &tfeat[16], &tfeat[17], &tfeat[18], &tfeat[19], 
 			&tfeat[20], &tfeat[21], &tfeat[22], &tfeat[23], &tfeat[24], 
