@@ -78,9 +78,9 @@ void RVdtw_free(t_RVdtw *x) {
 	x->rv->beat = NULL;
 	delete x->rv->chroma;
 	x->rv->chroma = NULL;
-
-	dsp_free((t_pxobject*)x);
+	
 	object_free(x->rv->l_buffer_reference);
+	dsp_free((t_pxobject*)x);
 }
 
 
@@ -89,7 +89,7 @@ void RVdtw_free(t_RVdtw *x) {
 void RVdtw_assist(t_RVdtw *x, void *b, long m, long a, char *s) {
     if (m == ASSIST_INLET)			// inlet
     { 
-                sprintf(s, "int: set length, feats: add frame");
+                sprintf(s, "read: load score, start: listen, (signal) input");
     } 
     else							// outlets
     {	
@@ -99,7 +99,7 @@ void RVdtw_assist(t_RVdtw *x, void *b, long m, long a, char *s) {
             case 1: sprintf(s, "h"); break;
             case 2: sprintf(s, "misc dump"); break;                   
 			case 3: sprintf(s, "bang on beats"); break;
-			case 4: sprintf(s, "tempo multiplier"); break;
+			case 4: sprintf(s, "relative tempo"); break;
         }	
     }
 }
