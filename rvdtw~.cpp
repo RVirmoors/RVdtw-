@@ -97,7 +97,7 @@ void RVdtw_assist(t_RVdtw *x, void *b, long m, long a, char *s) {
         {
             case 0: sprintf(s, "t"); break;
             case 1: sprintf(s, "h"); break;
-            case 2: sprintf(s, "misc dump"); break;                   
+			case 2: sprintf(s, "misc: marker, h_real, b_err, beat_err"); break;                   
 			case 3: sprintf(s, "bang on beats"); break;
 			case 4: sprintf(s, "relative tempo"); break;
         }	
@@ -625,6 +625,13 @@ void Raskell::reset() {
     outlet_int(max->out_h, warp->getH());
     outlet_float(max->out_tempo, 1);
 
+	// reset h_real & tempo_mode
+	atom_setsym(dump, gensym("h_real"));
+	atom_setfloat(dump+1, 0);
+	atom_setfloat(dump+2, 0);
+	atom_setlong(dump+3, 0);
+	outlet_list(max->out_dump, 0L, 4, dump);
+	
 	post("At start position!");
 }
 
