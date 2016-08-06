@@ -1285,7 +1285,7 @@ void Raskell::do_write(t_symbol *s) {
 		for (i = 0; i < warp->getH(); i++) {
 			buf += to_string((long long)(warp->getHistory(i))) + "\n";
 		}
-	} else if (input_sel == IN_SCORE) { // in SCORE mode, save the score
+	} else if (input_sel != IN_LIVE) { // in SCORE mode, save the score
 		strcpy(filename, "score.txt");
 		b_iter = acc_iter = 0;
 		for (i = 0; i < ysize; i++) {

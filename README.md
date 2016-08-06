@@ -1,4 +1,4 @@
-# RVdtw~
+# The rvdtw~ Tracker
 An online-DTW based performance alignment and tracking external for Max/MSP.
 
 See the included Max help patches for usage instructions. The system architecture is described in this paper:
@@ -19,7 +19,7 @@ Check out the [oDTW](https://github.com/RVirmoors/RVdtw-/tree/master/oDTW) subfo
 
 ## Compilation
 
-The included VS2010 and Xcode projects should do the trick. Email me if you encounter problems.
+The included VS2010 and Xcode projects should do the trick. Email me if you encounter problems: gburloiu AT gmail.
 
 I do intend to upgrade to the latest VS at some point.
 
