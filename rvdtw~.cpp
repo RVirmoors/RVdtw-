@@ -247,7 +247,7 @@ t_int *RVdtw_perform(t_int *w) {
 	t_float *in = (t_float *)(w[2]);
 	int n = (int)w[3];
 
-	if (!x->rv->zeros((double *)in, n))
+	if (!x->rv->zeros((double *)in, n) && x->rv->input_sel == IN_LIVE)
 		x->rv->perform((double *)in, n, B_SOLO);
 	// you have to return the NEXT pointer in the array OR MAX WILL CRASH
 	return w + 5;
@@ -258,7 +258,7 @@ t_int *RVdtw_perform(t_int *w) {
 void RVdtw_perform64(t_RVdtw *x, t_object *dsp64, double **ins, long numins, double **outs, long numouts, long sampleframes, long flags, void *userparam) {
 	t_double *in = ins[0];		// we get audio for each inlet of the object from the **ins argument
 	int n = sampleframes;
-	if (!x->rv->zeros(in, n))
+	if (!x->rv->zeros(in, n) && x->rv->input_sel == IN_LIVE)
 		x->rv->perform(in, n, B_SOLO);
 }
 
@@ -621,8 +621,8 @@ void Raskell::reset() {
 	pivot1_t = pivot1_h = pivot2_t = pivot2_h = 0;
 	pivot1_tp = pivot2_tp = 1;
     
-    outlet_int(max->out_t, warp->getT()); // t==0 in the beginning
-    outlet_int(max->out_h, warp->getH());
+    outlet_int(max->out_t, 0);
+    outlet_int(max->out_h, 0);
     outlet_float(max->out_tempo, 1);
 
 	// reset h_real & tempo_mode

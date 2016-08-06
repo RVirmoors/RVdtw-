@@ -88,7 +88,7 @@ unsigned int oDTW::processScoreFV(double *tfeat) {
 }
 
 void oDTW::processLiveFV(double *tfeat) {
-    if (t == 0)//xsize-1)  // is the window full?
+    if (t == 0)
         init_dtw();
     else {
         unsigned int i;
@@ -210,8 +210,6 @@ unsigned int oDTW::getHistory(unsigned int from_t) {
 double oDTW::getY(unsigned int i, unsigned int j) {
     return y[i][j];
 }
-
-
 
 unsigned int oDTW::getFsize() {
     return fsize;
