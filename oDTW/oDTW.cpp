@@ -62,7 +62,7 @@ unsigned int oDTW::setScoreSize(long v) {
 
         start(); // x, dtw arrays
         history.resize(ysize * 3); // leave room for t be 3 times longer than h
-        b_path.resize(bsize);
+ //       b_path.resize(bsize);
         
         markers.clear();
         markers.resize(ysize);
@@ -181,7 +181,7 @@ void oDTW::start() {
         b_move[i].resize(bsize);
     }
     
-    b_path.clear();
+ //   b_path.clear();
     
     b_err.clear();
     b_err.resize(bsize);
@@ -472,7 +472,7 @@ void oDTW::dtw_back() {
     if (t >= bsize && h >= bsize) { //&& (t % 2)
         double top, mid, bot, cheapest;
         unsigned int i, j;
-        b_path.clear();
+//        b_path.clear();
         // post("b_start is %i", b_start);
         b_dtw[b_start][bh_start] = Dist[b_start][bh_start]; // starting point
         b_move[b_start][bh_start] = NEW_BOTH;
@@ -506,7 +506,7 @@ void oDTW::dtw_back() {
         unsigned int b_t = t, b_h = h;
         i = (b_start+bsize-1) % bsize;		// t-1
         j = (bh_start+bsize-1) % bsize;		// h-1
-        b_path.push_back(0);
+//        b_path.push_back(0);
         int p = 1;
         while (i != b_start && j != bh_start) {
             if (b_move[i][j] == NEW_ROW) {
@@ -517,14 +517,14 @@ void oDTW::dtw_back() {
             else if (b_move[i][j] == NEW_COL) {
                 i = (i+bsize-1) % bsize;	// i--
                 b_t--;
-                b_path.push_back(p);
+ //               b_path.push_back(p);
             }
             else if (b_move[i][j] == NEW_BOTH) {
                 i = (i+bsize-1) % bsize;	// i--
                 j = (j+bsize-1) % bsize;	// j--
                 b_t--; b_h--;
                 p++;
-                b_path.push_back(p);
+ //               b_path.push_back(p);
             }
         }
         
