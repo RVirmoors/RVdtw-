@@ -469,6 +469,12 @@ void oDTW::dtw_back() {
     b_err[b_start][2] = h;
     b_err[b_start][3] = 1.f; // local tempo
     
+#ifdef __APPLE__
+    if (t > 1)
+        b_err[b_start][3] = h - history[t-1];
+    return;
+#endif
+    
     if (t >= bsize && h >= bsize) { //&& (t % 2)
         double top, mid, bot, cheapest;
         unsigned int i, j;
@@ -507,12 +513,12 @@ void oDTW::dtw_back() {
         i = (b_start+bsize-1) % bsize;		// t-1
         j = (bh_start+bsize-1) % bsize;		// h-1
 //        b_path.push_back(0);
-        int p = 1;
+ //       int p = 1;
         while (i != b_start && j != bh_start) {
             if (b_move[i][j] == NEW_ROW) {
                 j = (j+bsize-1) % bsize;	 // j--
                 b_h--;
-                p++;
+ //               p++;
             }
             else if (b_move[i][j] == NEW_COL) {
                 i = (i+bsize-1) % bsize;	// i--
@@ -523,15 +529,13 @@ void oDTW::dtw_back() {
                 i = (i+bsize-1) % bsize;	// i--
                 j = (j+bsize-1) % bsize;	// j--
                 b_t--; b_h--;
-                p++;
+ //               p++;
  //               b_path.push_back(p);
             }
         }
         
         b_err[b_start][0] = history[b_t] - b_h;
-        //float diff = b_err[b_start][0] - b_err[(b_start-1+bsize)%bsize][0];
-        //if (diff < 0)
-        //	b_err[b_start][0] -= diff / 2;
+
         
 //     if (tempo_mode != 2) { // if beat-tracker doesn't have control
         if (b_err[b_start][0] > 5) { // gotta go DOWN
