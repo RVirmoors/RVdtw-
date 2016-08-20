@@ -302,13 +302,13 @@ Raskell::Raskell() {
 		chroma->setChromaCalculationInterval(WINDOW_SIZE);
 		chr.clear();
 		chr.resize(12);
-        warp = new oDTW(128, 256, false);
+        warp = new oDTW(128, 256, true);
 
 		l_buffer_reference = NULL;
 		score_name = live_name = "";
 		
 		features = CHROMA;
-		tempo_model = T_PID;
+		tempo_model = T_DEQ;
         params = m = 12;
 //		tfeat = malloc(m * sizeof(double));
     
@@ -856,22 +856,22 @@ double Raskell::calc_tempo(int mode) {
 			}
 			break;
 		case T_PID:
-			if (t <= second)
+			if (t <= step)
 				new_tempo = 1;
 			else { 		
 				errors.push_back(error);
-				if(errors.size() > (t - last_beat))
+				if(errors.size() > step)
 					errors.pop_front();
 				if (abs(error) < 20.f) //anti-windup
 					integral += error;
-				if (beat_due) {
+				if (!(t%step)) {
 					// PID tempo model		
-					new_tempo = (double)(warp->getHistory(t) - warp->getHistory(last_beat)) / (t - last_beat);
-					float derivate = (error - errors[0]) / (t - last_beat);
+					new_tempo = (double)(warp->getHistory(t) - warp->getHistory(t-step)) / step;
+					float derivate = (error - errors[0]) / step;
 					//post("err = %f // int = %f // der = %f", Kp*error, Ki*integral, Kd*derivate);
 					double boost = (Kp*error + Ki*integral + Kd * derivate) / ((double)(t - last_beat));
 					new_tempo += boost;
-					post("new tempo %f, hop size %d, b dur %d", new_tempo, beat->getHopSize(), t - last_beat);
+					post("new tempo %f, hop size %d, b # %d", new_tempo, beat->getHopSize(), t/step);
 					last_beat = t;
 				}
 			}
