@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#define RV_VERSION 0.3
+#define RV_VERSION 0.301
 
 /*
 
@@ -164,6 +164,7 @@ public:
 	t_atom dump[50];
 
 	//		DSP vars:
+	long dsp_vector_size; 
 	t_uint16 active_frames;
 	vector<t_uint16> frame_index;
 	float SampleRate;

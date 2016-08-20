@@ -130,7 +130,7 @@ void RVdtw_readacco(t_RVdtw *x, t_symbol *s) {
 	x->rv->acc_beats.clear();
 	x->rv->acc_beats.resize(2);
 	x->rv->acc_iter = 0;	
-	x->rv->beat->updateHopAndFrameSize(HOP_SIZE, HOP_SIZE*2);
+	x->rv->beat->updateHopAndFrameSize(HOP_SIZE, HOP_SIZE);
 	atom v[1];
 	atom_setlong(v, B_ACCO),
 	defer_low(x,(method)RVdtw_do_read,s,1,v);
@@ -220,7 +220,7 @@ t_max_err RVdtw_notify(t_RVdtw *x, t_symbol *s, t_symbol *msg, void *sender, voi
 void RVdtw_dsp(t_RVdtw *x, t_signal **sp, short *count)
 {
 	//post("my sample rate is: %f", sp[0]->s_sr);
-	x->rv->beat->updateHopAndFrameSize(sp[0]->s_n, sp[0]->s_n*2);
+	x->rv->beat->updateHopAndFrameSize(sp[0]->s_n, sp[0]->s_n);
 	dsp_add(RVdtw_perform, 3, x, sp[0]->s_vec, sp[0]->s_n); // ins & sampleframes
 }
 
@@ -229,9 +229,11 @@ void RVdtw_dsp(t_RVdtw *x, t_signal **sp, short *count)
 // which operates on 64-bit audio signals.
 void RVdtw_dsp64(t_RVdtw *x, t_object *dsp64, short *count, double samplerate, long maxvectorsize, long flags)
 {
-	//post("my sample rate is: %f", samplerate);
-	x->rv->beat->updateHopAndFrameSize(maxvectorsize, maxvectorsize*2);
+    x->rv->dsp_vector_size = maxvectorsize;
 	object_method(dsp64, gensym("dsp_add64"), x, RVdtw_perform64, 0, NULL);
+	
+	x->rv->dspinit();
+//	post("DSP on! hop size is %d", x->rv->dsp_vector_size);
 }
 
 
@@ -293,13 +295,14 @@ Raskell::Raskell() {
 
 		SampleRate = sys_getsr();
 		active_frames = WINDOW_SIZE / HOP_SIZE;
+		dsp_vector_size = 64;
 
 		beat = new BTrack();
 		chroma = new Chromagram(WINDOW_SIZE, SampleRate); 
 		chroma->setChromaCalculationInterval(WINDOW_SIZE);
 		chr.clear();
 		chr.resize(12);
-        warp = new oDTW(128, 256, true);
+        warp = new oDTW(128, 256, false);
 
 		l_buffer_reference = NULL;
 		score_name = live_name = "";
@@ -686,7 +689,7 @@ void Raskell::dspinit() {
 	hamming(WINDOW_SIZE); // build window vector
 
 	reset_feat(); // sets frame_indexes, resizes frame vectors.
-	post("DSP ready!");
+//	post("DSP ready!");
 }
 
 void Raskell::fillBanks() {
@@ -744,6 +747,8 @@ void Raskell::add_sample_to_frames(double sample) {
 }
 
 void Raskell::reset_feat() {
+	beat->updateHopAndFrameSize(dsp_vector_size, dsp_vector_size);
+
 	frame.clear();
 	frame.resize(active_frames);
 	for (int i=0; i<active_frames; i++)
@@ -866,8 +871,8 @@ double Raskell::calc_tempo(int mode) {
 					//post("err = %f // int = %f // der = %f", Kp*error, Ki*integral, Kd*derivate);
 					double boost = (Kp*error + Ki*integral + Kd * derivate) / ((double)(t - last_beat));
 					new_tempo += boost;
+					post("new tempo %f, hop size %d, b dur %d", new_tempo, beat->getHopSize(), t - last_beat);
 					last_beat = t;
-					//post("new tempo %f", new_tempo);
 				}
 			}
 			break;
@@ -1385,7 +1390,7 @@ void Raskell::set_buffer(t_symbol *s, int dest) {
 		if (sample) {
 			double samp[HOP_SIZE];
 			long framesread = 0;
-			beat->updateHopAndFrameSize(HOP_SIZE, HOP_SIZE*2);
+			beat->updateHopAndFrameSize(HOP_SIZE, HOP_SIZE);
 			for (long i = 0; i < frames-HOP_SIZE; i += HOP_SIZE) {			
 				std::copy(sample+i, sample+i+HOP_SIZE, samp); // convert float to double
 				//post("sample[%d] %f , double %f", i, sample[i], samp[0]);
