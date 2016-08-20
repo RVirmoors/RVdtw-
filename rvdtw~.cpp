@@ -293,20 +293,19 @@ Raskell::Raskell() {
 
 		SampleRate = sys_getsr();
 		active_frames = WINDOW_SIZE / HOP_SIZE;
-		dsp_frame_size = 64;
 
 		beat = new BTrack();
 		chroma = new Chromagram(WINDOW_SIZE, SampleRate); 
 		chroma->setChromaCalculationInterval(WINDOW_SIZE);
 		chr.clear();
 		chr.resize(12);
-        warp = new oDTW(128, 512, true);
+        warp = new oDTW(128, 256, true);
 
 		l_buffer_reference = NULL;
 		score_name = live_name = "";
 		
 		features = CHROMA;
-		tempo_model = T_DEQ;
+		tempo_model = T_PID;
         params = m = 12;
 //		tfeat = malloc(m * sizeof(double));
     
@@ -327,7 +326,6 @@ Raskell::Raskell() {
 			tfeat = fftw_alloc_real(m);
 		}
 #endif
-
 		dspinit();
 		//post ("RV object created");
 }

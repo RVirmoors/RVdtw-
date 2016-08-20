@@ -463,99 +463,97 @@ bool oDTW::decrease_h() {
 void oDTW::dtw_back() {
     b_start = t % bsize;
     bh_start = h % bsize;
+	short B = 8;	// look back every B frames
+	int step = bsize / 8;	// compute local tempo over step*2 frames
     
     b_err[b_start][0] = 0.f; // error; to be computed after t > bsize, below
     b_err[b_start][1] = t;
     b_err[b_start][2] = h;
-    b_err[b_start][3] = 1.f; // local tempo
-    
+    b_err[b_start][3] = h - history[t-1]; // local tempo
+
+/*
 #ifdef __APPLE__
     if (t > 1)
         b_err[b_start][3] = h - history[t-1];
     return;
 #endif
-    
-    if (t >= bsize && h >= bsize) { //&& (t % 2)
-        double top, mid, bot, cheapest;
-        unsigned int i, j;
-//        b_path.clear();
-        // post("b_start is %i", b_start);
-        b_dtw[b_start][bh_start] = Dist[b_start][bh_start]; // starting point
-        b_move[b_start][bh_start] = NEW_BOTH;
+*/    
+    if (t >= bsize && h >= bsize) { // now that b_dtw[][] is full:
+
+		if (t % B) { // if not looking back, then error&tempo remain the same
+			b_err[b_start][0]					 = b_err[(b_start-1+bsize)%bsize][0];
+			b_err[(b_start-step+bsize)%bsize][3] = b_err[(b_start-step-1+bsize)%bsize][3];
+		}
+		else { // every B frames, let's look back:
+			double top, mid, bot, cheapest;
+			unsigned int i, j;
+			b_dtw[b_start][bh_start] = Dist[b_start][bh_start]; // starting point
+			b_move[b_start][bh_start] = NEW_BOTH;
         
-        // compute backwards DTW (circular i--), and b_move
-        for (i = b_start+bsize-1 % bsize; i != b_start; i = (i+bsize-1) % bsize) { // t-1 ... t-bsize
-            for (j = bh_start+bsize-1 % bsize; j != bh_start; j = (j+bsize-1) % bsize) { // h-1 ... h-bsize
-                unsigned int imod = i % bsize;
-                unsigned int imin1 = (i+1) % bsize;
-                unsigned int imin2 = (i+2) % bsize;
-                unsigned int jmod = j % bsize;
-                unsigned int jmin1 = (j+1) % bsize;
-                unsigned int jmin2 = (j+2) % bsize;
+			// compute backwards DTW (circular i--), and b_move
+			for (i = b_start+bsize-1 % bsize; i != b_start; i = (i+bsize-1) % bsize) { // t-1 ... t-bsize
+				for (j = bh_start+bsize-1 % bsize; j != bh_start; j = (j+bsize-1) % bsize) { // h-1 ... h-bsize
+					unsigned int imod = i % bsize;
+					unsigned int imin1 = (i+1) % bsize;
+					unsigned int imin2 = (i+2) % bsize;
+					unsigned int jmod = j % bsize;
+					unsigned int jmin1 = (j+1) % bsize;
+					unsigned int jmin2 = (j+2) % bsize;
                 
-                top = b_dtw[imin2][jmin1] + Dist[imod][jmod] * 0.2;
-                mid = b_dtw[imin1][jmin1] + Dist[imod][jmod] * mid_weight;
-                bot = b_dtw[imin1][jmin2] + Dist[imod][jmod] * 0.2;
+					top = b_dtw[imin2][jmin1] + Dist[imod][jmod] * 0.4;	// 0.2
+					mid = b_dtw[imin1][jmin1] + Dist[imod][jmod] * mid_weight;	// 1
+					bot = b_dtw[imin1][jmin2] + Dist[imod][jmod] * 0.4;	// 0.2
                 
-                if( (top < mid) && (top < bot))	{
-                    cheapest = top; b_move[imod][jmod] = NEW_ROW;
-                }
-                else if (mid <= bot) {
-                    cheapest = mid; b_move[imod][jmod] = NEW_BOTH;
-                }
-                else {
-                    cheapest = bot; b_move[imod][jmod] = NEW_COL;
-                }
-                b_dtw[imod][jmod] = cheapest;
-            }
-        }
-        unsigned int b_t = t, b_h = h;
-        i = (b_start+bsize-1) % bsize;		// t-1
-        j = (bh_start+bsize-1) % bsize;		// h-1
-//        b_path.push_back(0);
- //       int p = 1;
-        while (i != b_start && j != bh_start) {
-            if (b_move[i][j] == NEW_ROW) {
-                j = (j+bsize-1) % bsize;	 // j--
-                b_h--;
- //               p++;
-            }
-            else if (b_move[i][j] == NEW_COL) {
-                i = (i+bsize-1) % bsize;	// i--
-                b_t--;
- //               b_path.push_back(p);
-            }
-            else if (b_move[i][j] == NEW_BOTH) {
-                i = (i+bsize-1) % bsize;	// i--
-                j = (j+bsize-1) % bsize;	// j--
-                b_t--; b_h--;
- //               p++;
- //               b_path.push_back(p);
-            }
-        }
+					if( (top < mid) && (top < bot))	{
+						cheapest = top; b_move[imod][jmod] = NEW_ROW;
+					}
+					else if (mid <= bot) {
+						cheapest = mid; b_move[imod][jmod] = NEW_BOTH;
+					}
+					else {
+						cheapest = bot; b_move[imod][jmod] = NEW_COL;
+					}
+					b_dtw[imod][jmod] = cheapest;
+				}
+			}
+			unsigned int b_t = t, b_h = h;
+			i = (b_start+bsize-1) % bsize;		// t-1
+			j = (bh_start+bsize-1) % bsize;		// h-1
+
+			while (i != b_start && j != bh_start) {
+				if (b_move[i][j] == NEW_ROW) {
+					j = (j+bsize-1) % bsize;	 // j--
+					b_h--;
+				}
+				else if (b_move[i][j] == NEW_COL) {
+					i = (i+bsize-1) % bsize;	// i--
+					b_t--;
+				}
+				else if (b_move[i][j] == NEW_BOTH) {
+					i = (i+bsize-1) % bsize;	// i--
+					j = (j+bsize-1) % bsize;	// j--
+					b_t--; b_h--;
+				}
+			}
         
-        b_err[b_start][0] = history[b_t] - b_h;
+			b_err[b_start][0] = history[b_t] - b_h;
 
         
-//     if (tempo_mode != 2) { // if beat-tracker doesn't have control
-        if (b_err[b_start][0] > 5) { // gotta go DOWN
-            if (bot_weight < 20) bot_weight += fabs(b_err[b_start][0]) / 50;
-            //post("bot w = %f", bot_weight);
-        }
-        else if (b_err[b_start][0] < -5) {	// gotta go UP
-            if (top_weight < 20) top_weight += fabs(b_err[b_start][0]) / 50;
-            //post("top w = %f", top_weight);
-        }
-        else {
-            top_weight = bot_weight = SIDE;
-        }
-//     }
-        int step = bsize / 8;
-        
-        if (t > step * 2) {
-            // compute local tempo based on back DTW history:
-            b_err[(b_start-step+bsize)%bsize][3] =
-            (float)(h - b_err[(b_start-(step*2)+bsize)%bsize][2] + 1) / (t - b_err[(b_start-(step*2)+bsize)%bsize][1] + 1);
-        }
+			if (b_err[b_start][0] > 5) { // gotta go DOWN
+				if (bot_weight < 20) bot_weight += fabs(b_err[b_start][0]) / 50;
+			}
+			else if (b_err[b_start][0] < -5) {	// gotta go UP
+				if (top_weight < 20) top_weight += fabs(b_err[b_start][0]) / 50;
+			}
+			else {
+				top_weight = bot_weight = SIDE;
+			}
+
+			if (t > step * 2) {
+				// compute local tempo based on back DTW history:
+				b_err[(b_start-step+bsize)%bsize][3] =
+				(float)(h - b_err[(b_start-(step*2)+bsize)%bsize][2] + 1) / (t - b_err[(b_start-(step*2)+bsize)%bsize][1] + 1);
+			}
+		}
     }
 }

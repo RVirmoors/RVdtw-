@@ -164,7 +164,6 @@ public:
 	t_atom dump[50];
 
 	//		DSP vars:
-	long dsp_frame_size;
 	t_uint16 active_frames;
 	vector<t_uint16> frame_index;
 	float SampleRate;
