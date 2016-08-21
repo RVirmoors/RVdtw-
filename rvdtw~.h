@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#define RV_VERSION 0.301
+#define RV_VERSION 0.31
 
 /*
 

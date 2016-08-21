@@ -1034,9 +1034,9 @@ void Raskell::beat_switch() {
 	int step = bsize / 8;
 	
 	// sensitivity to tempo fluctuations:
-	if (abs(error) > pow(1.f-sensitivity, 2)*100.f + abs(minerr) && beat_due) {
+	if (abs(error) > pow(1.f-sensitivity, 2)*100.f + abs(minerr)) {
 //		post ("waiting %i . tempo %f - %f beat_tempo", waiting, tempo_avg, beat_tempo);
-		if (abs(b_err[b_start][0]) > 15 && abs(tempo_avg - beat_tempo) > 0.15) {
+		if (abs(b_err[b_start][0]) > 15 && abs(tempo_avg - beat_tempo) > 0.15 && beat_due) {
 			// DTW is way off, beat tracker takes over
 //			post("oDTW is off, BT on! %f != %f. beat length = %d", tempo_avg, beat_tempo, beat_length);
 			waiting = beat_length;
