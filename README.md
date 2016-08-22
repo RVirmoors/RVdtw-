@@ -3,7 +3,10 @@ An online-DTW based performance alignment and tracking external for Max/MSP.
 
 Intro video: [Auto accompaniment with rvdtw~](https://youtu.be/EIS1bAxAiNc)
 
-See the included Max help patches for usage instructions. The system architecture is described in this paper:
+See the included .maxhelp patch for basic usage instructions. 
+For a deeper look, dig into the Overview patch in the Max Extras menu. Full reference info coming soon.
+
+The system architecture is described in this paper:
 
 * "An Online Tempo Tracker for Automatic Accompaniment based on Audio-to-audio Alignment and Beat Tracking", G. Burloiu. In Sound and Music Computing (SMC), 2016.
 
