@@ -353,7 +353,7 @@ void Raskell::init(t_symbol *s,  long argc, t_atom *argv) {
     ps_nothing = gensym("");
     ps_buffer_modified = gensym("buffer_modified");
     
-    post("RVdtw version %.2f", RV_VERSION);
+    post("RVdtw version %.3f", RV_VERSION);
     
     buf_name = (argc) ? atom_getsym(argv) : gensym("");
     
