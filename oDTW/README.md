@@ -4,8 +4,8 @@ An Online Dynamic Time Warping C++ library.
 Adapted from the original algorithm by Simon Dixon presented in:
 * "An On-Line Time Warping Algorithm for Tracking Musical Performances", S. Dixon. In IJCAI, pp. 1727-1728. 2005.
 
-A full description of the library is in my (upcoming) PhD thesis:
-* "Dynamic Music Representations for Real-Time Performance", G. Burloiu, PhD Thesis, "Politehnica" University of Bucharest, 2016.
+A full description of the library is in my PhD thesis (sections 4.1.1, 4.1.2; appendix C):
+* ["Dynamic Music Representations for Real-Time Performance"](https://www.academia.edu/29340306/Dynamic_Music_Representations_for_Real-Time_Performance), G. Burloiu, PhD Thesis, "Politehnica" University of Bucharest, 2016.
 
 ## Usage
 
@@ -59,4 +59,4 @@ When you're done, you can start() a new run.
 
 ## Testing
 
-The [unit test](https://github.com/RVirmoors/RVdtw-/blob/master/oDTW_test/) folder shows a simple use case / test scenario. Compile and run it with the Boost Test library.
+The [unit test](https://github.com/RVirmoors/RVdtw-/blob/master/oDTW_test/) folder shows a simple use case / test scenario. Compile and run it with the Boost Test library. Wave file tests require the libsndfile library.

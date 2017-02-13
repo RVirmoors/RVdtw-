@@ -45,9 +45,10 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>C:\Program Files\boost_1_61_0;$(IncludePath)</IncludePath>
+    <IncludePath>C:\Program Files\boost_1_61_0;$(SolutionDir)libsndfile\include;$(IncludePath)</IncludePath>
     <OutDir>$(SolutionDir)oDTW_test\$(Configuration)\</OutDir>
     <SourcePath>$(SolutionDir)oDTW;$(SourcePath)</SourcePath>
+    <LibraryPath>$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -83,8 +84,8 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>C:\Program Files\boost_1_61_0\stage\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)libsndfile\lib;C:\Program Files\boost_1_61_0\stage\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>libsndfile-1.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>"$(TargetDir)$(TargetName).exe" --result_code=no --report_level=no --log_level=message</Command>
@@ -96,6 +97,9 @@
   <ItemGroup>
     <ClCompile Include="..\oDTW\oDTW.cpp" />
     <ClCompile Include="test_unit.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\libsndfile\include\sndfile.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

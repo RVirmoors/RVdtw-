@@ -25,6 +25,8 @@
 #include <cstdint>
 #include "..\oDTW\oDTW.h"
 
+#include "sndfile.h"
+
 BOOST_AUTO_TEST_SUITE(tests)
 
 // ===============================================
@@ -51,7 +53,7 @@ BOOST_AUTO_TEST_CASE(identical)
 
 // ===============================================
 
-BOOST_AUTO_TEST_CASE(file_inputs)
+BOOST_AUTO_TEST_CASE(featFile_inputs)
 {
 	// BOOST_DATA_TEST_CASE causes compile errors in vs2010, so let's do it like this:
 	for (int testno = 0; testno < 1; testno++) { // !! number of file pairs to be tested !!
@@ -170,5 +172,14 @@ BOOST_AUTO_TEST_CASE(file_inputs)
 }
 
 // ===============================================
+
+BOOST_AUTO_TEST_CASE(waveFile_inputs)
+{
+	char buf [1024] ;
+
+	sf_command (NULL, SFC_GET_LIB_VERSION, buf, sizeof (buf)) ;
+	//puts (buf) ;
+	BOOST_TEST_MESSAGE(" buf size: " << buf);
+}
 
 BOOST_AUTO_TEST_SUITE_END()
