@@ -1,6 +1,6 @@
 // rvdtw~.h
 //
-// Copyright (C) 2014-2016 Grigore Burloiu
+// Copyright (C) 2014-2017 Grigore Burloiu
 /*
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,11 +16,12 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#define RV_VERSION 0.301
+#define RV_VERSION 0.302
 
 /*
 
 Version history:
+0.302 - updates for M4L/MIDIacco support
 0.3 - added beat tracking module
 
 */
@@ -95,6 +96,8 @@ extern "C" {
 	void RVdtw_feats(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv);
 	void RVdtw_input(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv);
 	void RVdtw_scoresize(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv);
+	void RVdtw_beat(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv);
+
 	void RVdtw_read(t_RVdtw *x, t_symbol *s);
 	void RVdtw_readacco(t_RVdtw *x, t_symbol *s);
 	void RVdtw_do_read(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv); // in deferred thread
@@ -242,8 +245,9 @@ public:
 	// beat methods:
     void beat_switch();
 	int calc_beat_diff(double cur_beat, double prev_beat, double ref_beat);
-	t_uint16 update_beat_iter(t_uint16 beat_iter, vector<float> *beat_vector, double ref_beat);
+	t_uint16 update_beat_iter(t_uint16 beat_index, vector<float> *beat_vector, double ref_beat);
 	double calc_beat_tempo();
+	void add_beat(t_uint16 pos, double tempo);
 	short tempo_mode; // 0: insensitive, 1: DTW track, 2: beat track
 
 	// file input / output methods:

@@ -1,6 +1,6 @@
 // rvdtw~.cpp
 //
-// Copyright (C) 2014-2016 Grigore Burloiu
+// Copyright (C) 2014-2017 Grigore Burloiu
 /*
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -29,6 +29,8 @@ int C74_EXPORT main(void) {
 	class_addmethod(c, (method)RVdtw_feats,		"feats",	A_GIMME, 0);
 	class_addmethod(c, (method)RVdtw_input,		"input",	A_GIMME, 0);
 	class_addmethod(c, (method)RVdtw_scoresize,	"score_size",	A_GIMME, 0); // not needed for users
+	class_addmethod(c, (method)RVdtw_beat,		"beat",		A_GIMME, 0);
+
 	class_addmethod(c, (method)RVdtw_read,		"read",		A_DEFSYM,0);
 	class_addmethod(c, (method)RVdtw_readacco,	"readacco",	A_DEFSYM,0);
 	class_addmethod(c, (method)RVdtw_write,		"write",	A_DEFSYM,0);
@@ -118,6 +120,13 @@ void RVdtw_input(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv) {
 void RVdtw_scoresize(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv) {
 	long v = atom_getlong(argv);
 	x->rv->score_size(v);
+}
+
+void RVdtw_beat(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv) {
+	t_uint16 pos = atom_getlong(argv);
+	double tempo = atom_getfloat(argv+1);
+	x->rv->add_beat(pos, tempo);
+	post("beat at %d, tempo %.3f. total beats: %d", pos, tempo, x->rv->acc_beats[0].size());
 }
 
 void RVdtw_read(t_RVdtw *x, t_symbol *s) {
@@ -377,6 +386,8 @@ bool Raskell::zeros(double *in, long sampleframes) {
 
 void Raskell::perform(double *in, long sampleframes, int dest) {
 
+	// ==== BEAT TRACKING
+
 	beat->processAudioFrame(in);
 
 	if(beat->beatDueInCurrentFrame()) { // beat detected
@@ -424,15 +435,15 @@ void Raskell::perform(double *in, long sampleframes, int dest) {
 
 		case (B_ACCO) : // looking at accompaniment
 			if (acc_iter) {
-				acc_beats[0].push_back(acc_iter);
-				acc_beats[1].push_back(beat->getCurrentTempoEstimate());
+				add_beat(acc_iter, beat->getCurrentTempoEstimate());
 			}
 			//post("tempo %f at beat %d", beat->getCurrentTempoEstimate(), acc_iter);
 			break;
 		}	
 	}
+
+	// ==== ALIGNMENT
 		
-	//post("in %f", in[0]);
 	t_uint32 i, j;
 	//post("adding %d samples to frames of %d size", sampleframes, WINDOW_SIZE);
 	for (i=0; i < sampleframes; i++) {
@@ -440,7 +451,6 @@ void Raskell::perform(double *in, long sampleframes, int dest) {
 	}
 	for(i=0; i<active_frames; i++) {
 		if(frame_index[i]==0) {		// if frame is full, then compute feature vector
-			//post("frame is full # %d. first sample: %f", iter, frame[i][0]);
 			if (dest != B_ACCO) {
 				if (zeros(in, sampleframes)) {
 					for (i=0; i<params; i++)
@@ -475,15 +485,15 @@ void Raskell::perform(double *in, long sampleframes, int dest) {
 	}
 }
 
-t_uint16 Raskell::update_beat_iter(t_uint16 beat_iter, vector<float> *beat_vector, double ref_beat) {
-	if (beat_iter < beat_vector->size()-1) {
+t_uint16 Raskell::update_beat_iter(t_uint16 beat_index, vector<float> *beat_vector, double ref_beat) {
+	// finds closest beat index to the "ref_beat" coordinate
+	if (beat_index < beat_vector->size()-1) {
 		// while the next beat is closer than the current one, increment iterator
-		while( (beat_iter < beat_vector->size()-1) && 
-			abs(ref_beat - beat_vector->at(beat_iter)) > abs(ref_beat - beat_vector->at(beat_iter+1)) )
-			beat_iter++;
+		while( (beat_index < beat_vector->size()-1) && 
+			abs(ref_beat - beat_vector->at(beat_index)) > abs(ref_beat - beat_vector->at(beat_index+1)) )
+			beat_index++;
 	}
-//	post("iter %d", beat_iter);
-	return beat_iter;
+	return beat_index;
 }
 
 int Raskell::calc_beat_diff(double cur_beat, double prev_beat, double ref_beat) {
@@ -1089,32 +1099,10 @@ double Raskell::calc_beat_tempo() {
 	return (beat->getCurrentTempoEstimate() / ref_tempo);
 }
 
-//void Raskell::increment_h() {
-
-	/*
-	elast_beat = 1;
-	float dist = 3/(abs(y_beats[1][b_iter])+1);
-	if (h > y_beats[0][b_iter] - dist && h < y_beats[0][b_iter]) {
-		elast_beat = ( y_beats[0][b_iter] - h ) / dist;
-	}
-	dist = 10/(abs(y_beats[1][b_iter])+1);
-	if (h < y_beats[0][b_iter] + dist && h >= y_beats[0][b_iter]) {
-		elast_beat = ( h - y_beats[0][b_iter] ) / dist;
-	}
-
-	if (b_iter+1 < y_beats[1].size()) {
-		dist = 3/(abs(y_beats[1][b_iter+1])+1);
-		if (h > y_beats[0][b_iter+1] - dist && h < y_beats[0][b_iter+1]) {
-			elast_beat = ( y_beats[0][b_iter+1] - h ) / dist;
-		}
-		dist = 10/(abs(y_beats[1][b_iter+1])+1);
-		if (h < y_beats[0][b_iter+1] + dist && h >= y_beats[0][b_iter+1]) {
-			elast_beat = ( h - y_beats[0][b_iter+1] ) / dist;
-		}
-	}*/
-
-
-//}
+void Raskell::add_beat(t_uint16 pos, double tempo) {
+	acc_beats[0].push_back(pos);
+	acc_beats[1].push_back(tempo);
+}
 
 
 
