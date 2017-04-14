@@ -43,6 +43,9 @@ int C74_EXPORT main(void) {
 	class_addmethod(c, (method)RVdtw_sensitivity,	"sensitivity",	A_GIMME, 0);
 	class_addmethod(c, (method)RVdtw_elasticity,	"elasticity",	A_GIMME, 0);
 
+	class_addmethod(c, (method)RVdtw_getscoredims,	"getscoredims",	A_GIMME, 0);
+	class_addmethod(c, (method)RVdtw_dumpscore,	"dumpscore",	A_GIMME, 0);
+
 	class_addmethod(c, (method)RVdtw_dblclick,	"dblclick",	A_CANT, 0);	
 	class_addmethod(c, (method)RVdtw_notify,	"notify",	A_CANT, 0);
 
@@ -205,6 +208,14 @@ void RVdtw_sensitivity(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv) {
 void RVdtw_elasticity(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv) {
 	x->rv->elasticity = atom_getfloat(argv);
 	post("Elasticity of tempo model is %.2f", x->rv->elasticity);
+}
+
+void RVdtw_getscoredims(t_RVdtw *x, t_symbol *s) {
+	x->rv->getscoredims();
+}
+
+void RVdtw_dumpscore(t_RVdtw *x, t_symbol *s) {
+	x->rv->dumpscore();
 }
 
 // this lets us double-click to open up the buffer~ it references
@@ -691,6 +702,27 @@ void Raskell::gotoms(long v) {
     h_real = to_h;
 }
 
+void Raskell::getscoredims() {
+	if (ysize) {
+		atom_setsym(dump, gensym("scoredim"));
+		atom_setlong(dump+1, params);
+		atom_setlong(dump+2, ysize);
+		outlet_list(max->out_dump, 0L, 3, dump);
+	}
+}
+
+void Raskell::dumpscore() {
+	string buf = "feat";
+	for (long long i = 0; i < ysize; i++) {
+		for (unsigned int j = 0; j < params; j++) {
+			buf += " " + to_string((long double)(warp->getY(i,j)));
+		}
+		atom_setsym(dump, gensym(buf.c_str()));
+		outlet_list(max->out_dump, 0L, 1, dump);
+		buf = "feat";
+	}
+}
+
 
 // ======================== DSP stuff ================
 
@@ -1160,8 +1192,11 @@ void Raskell::file_open(char *name) {
 					eol=strchr(eol+1,'\n'); // read next line
 				}
 				score_size(lines);
-				// enter frames and markers:
+				// read frames and markers:
 				RVdtw_read_line(max, 0);
+				// dump score for graphical output:
+				getscoredims();
+				dumpscore();
 			} 
 			else {
 				// read LIVE frames: instant simulation

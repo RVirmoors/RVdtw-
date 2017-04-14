@@ -111,6 +111,8 @@ extern "C" {
 	void RVdtw_follow(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv);
 	void RVdtw_sensitivity(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv);
 	void RVdtw_elasticity(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv);
+	void RVdtw_getscoredims(t_RVdtw *x, t_symbol *s);
+	void RVdtw_dumpscore(t_RVdtw *x, t_symbol *s);
 
 	void RVdtw_dblclick(t_RVdtw *x);
 	t_max_err RVdtw_notify(t_RVdtw *x, t_symbol *s, t_symbol *msg, void *sender, void *data);
@@ -217,6 +219,8 @@ public:
 	void input(long v);
 	void gotomarker(long v);
 	void gotoms(long v);
+	void getscoredims();
+	void dumpscore();
 
 	// feat extraction methods:
 	bool zeros(double *in, long sampleframes);
