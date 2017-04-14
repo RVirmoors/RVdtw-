@@ -39,7 +39,7 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>C:\Program Files\boost_1_61_0;$(IncludePath)</IncludePath>
+    <IncludePath>C:\Program Files\boost_1_61_0;$(SolutionDir)libsndfile\include;$(IncludePath)</IncludePath>
     <OutDir>$(SolutionDir)oDTW_test\$(Configuration)\</OutDir>
     <SourcePath>$(SolutionDir)oDTW;$(SourcePath)</SourcePath>
   </PropertyGroup>

@@ -457,7 +457,7 @@ bool oDTW::decrease_h() {
      }
      return true;
      */
-    
+    return true;
 }
 
 void oDTW::dtw_back() {
