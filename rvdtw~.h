@@ -55,7 +55,6 @@ Version history:
 #include <sstream>
 
 
-
 // FFT params
 #define WINDOW_SIZE 2048
 #define HOP_SIZE 512
