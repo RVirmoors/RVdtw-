@@ -230,6 +230,7 @@ void RVdtw_dblclick(t_RVdtw *x) {
 // this handles notifications when the buffer appears, disappears, or is modified.
 t_max_err RVdtw_notify(t_RVdtw *x, t_symbol *s, t_symbol *msg, void *sender, void *data)
 {
+	post("Score buffer modified!");
 	if (msg == x->rv->ps_buffer_modified && x->rv->input_sel == IN_SCORE)
 		x->rv->set_buffer(x->rv->buf_name, B_SOLO);
 	return buffer_ref_notify(x->rv->l_buffer_reference, s, msg, sender, data);
