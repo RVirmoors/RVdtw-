@@ -113,6 +113,7 @@ extern "C" {
 	void RVdtw_elasticity(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv);
 	void RVdtw_getscoredims(t_RVdtw *x, t_symbol *s);
 	void RVdtw_dumpscore(t_RVdtw *x, t_symbol *s);
+	void RVdtw_do_dumpscore(t_RVdtw *x, t_symbol *s); // in deferred thread
 
 	void RVdtw_dblclick(t_RVdtw *x);
 	t_max_err RVdtw_notify(t_RVdtw *x, t_symbol *s, t_symbol *msg, void *sender, void *data);

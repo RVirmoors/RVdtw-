@@ -215,6 +215,10 @@ void RVdtw_getscoredims(t_RVdtw *x, t_symbol *s) {
 }
 
 void RVdtw_dumpscore(t_RVdtw *x, t_symbol *s) {
+	defer_low(x,(method)RVdtw_do_dumpscore,s,0,0L);
+}
+
+void RVdtw_do_dumpscore(t_RVdtw *x, t_symbol *s) {
 	x->rv->dumpscore();
 }
 
