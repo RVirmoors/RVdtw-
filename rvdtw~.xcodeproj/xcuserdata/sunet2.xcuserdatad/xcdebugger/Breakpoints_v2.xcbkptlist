@@ -47,7 +47,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "479"
             endingLineNumber = "479"
-            landmarkName = "Raskell::update_beat_iter(t_uint16 beat_iter, vector&lt;float&gt; *beat_vector, double ref_beat)"
+            landmarkName = "Raskell::perform(double *in, long sampleframes, int dest)"
             landmarkType = "5">
          </BreakpointContent>
       </BreakpointProxy>
@@ -63,7 +63,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "486"
             endingLineNumber = "486"
-            landmarkName = "Raskell::update_beat_iter(t_uint16 beat_iter, vector&lt;float&gt; *beat_vector, double ref_beat)"
+            landmarkName = "Raskell::perform(double *in, long sampleframes, int dest)"
             landmarkType = "5">
          </BreakpointContent>
       </BreakpointProxy>
@@ -209,7 +209,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "1191"
             endingLineNumber = "1191"
-            landmarkName = "Raskell::read_line()"
+            landmarkName = "Raskell::file_open(char *name)"
             landmarkType = "5">
          </BreakpointContent>
       </BreakpointProxy>
@@ -225,7 +225,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "1197"
             endingLineNumber = "1197"
-            landmarkName = "Raskell::read_line()"
+            landmarkName = "Raskell::file_open(char *name)"
             landmarkType = "5">
          </BreakpointContent>
       </BreakpointProxy>
