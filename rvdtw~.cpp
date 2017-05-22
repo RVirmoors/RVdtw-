@@ -152,6 +152,8 @@ void RVdtw_do_read(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv) {
 	long v = atom_getlong(argv); // B_SOLO or B_ACCO
 	if (!x->rv->do_read(s)) // if input is not a text file
 		x->rv->set_buffer(s, v); // then treat it as a buffer
+	x->rv->getscoredims();
+	x->rv->dumpscore();
 }
 
 void RVdtw_read_line(t_RVdtw *x, t_symbol *s) {
