@@ -29,5 +29,5 @@
 #define CHROMA 2
 
 // buffer destination
-#define B_SOLO 1
-#define B_ACCO 2
+#define BUF_MAIN 1
+#define BUF_ACCO 2

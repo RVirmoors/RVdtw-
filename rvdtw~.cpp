@@ -134,7 +134,7 @@ void RVdtw_beat(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv) {
 
 void RVdtw_read(t_RVdtw *x, t_symbol *s) {
 	atom v[1];
-	atom_setlong(v, B_SOLO),
+	atom_setlong(v, BUF_MAIN),
 	defer_low(x,(method)RVdtw_do_read,s,1,v);
 }
 
@@ -144,20 +144,21 @@ void RVdtw_readacco(t_RVdtw *x, t_symbol *s) {
 	x->rv->acc_iter = 0;	
 	x->rv->beat->updateHopAndFrameSize(HOP_SIZE, HOP_SIZE);
 	atom v[1];
-	atom_setlong(v, B_ACCO),
+	atom_setlong(v, BUF_ACCO),
 	defer_low(x,(method)RVdtw_do_read,s,1,v);
 }
 
 void RVdtw_do_read(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv) {
-	long v = atom_getlong(argv); // B_SOLO or B_ACCO
+	long v = atom_getlong(argv); // BUF_MAIN or BUF_ACCO
 	if (!x->rv->do_read(s)) // if input is not a text file
 		x->rv->set_buffer(s, v); // then treat it as a buffer
-	x->rv->getscoredims();
-	x->rv->dumpscore();
+	if (v == BUF_MAIN) {
+		x->rv->getscoredims();
+		x->rv->dumpscore();
+	}
 }
 
 void RVdtw_read_line(t_RVdtw *x, t_symbol *s) {
-	//post("read %.2f percent...", (float)(x->rv->iter * 100) / x->rv->ysize );
 	if(x->rv->read_line())
 		defer_low(x,(method)RVdtw_read_line,0,0,0L);
 }
@@ -234,7 +235,7 @@ t_max_err RVdtw_notify(t_RVdtw *x, t_symbol *s, t_symbol *msg, void *sender, voi
 {
 	post("Score buffer modified!");
 	if (msg == x->rv->ps_buffer_modified && x->rv->input_sel == IN_SCORE)
-		x->rv->set_buffer(x->rv->buf_name, B_SOLO);
+		x->rv->set_buffer(x->rv->buf_name, BUF_MAIN);
 	return buffer_ref_notify(x->rv->l_buffer_reference, s, msg, sender, data);
 }
 
@@ -277,7 +278,7 @@ t_int *RVdtw_perform(t_int *w) {
 	int n = (int)w[3];
 
 	if (!x->rv->zeros((double *)in, n) && x->rv->input_sel == IN_LIVE)
-		x->rv->perform((double *)in, n, B_SOLO);
+		x->rv->perform((double *)in, n, BUF_MAIN);
 	// you have to return the NEXT pointer in the array OR MAX WILL CRASH
 	return w + 5;
 }
@@ -288,7 +289,7 @@ void RVdtw_perform64(t_RVdtw *x, t_object *dsp64, double **ins, long numins, dou
 	t_double *in = ins[0];		// we get audio for each inlet of the object from the **ins argument
 	int n = sampleframes;
 	if (!x->rv->zeros(in, n) && x->rv->input_sel == IN_LIVE)
-		x->rv->perform(in, n, B_SOLO);
+		x->rv->perform(in, n, BUF_MAIN);
 }
 
 
@@ -386,7 +387,7 @@ void Raskell::init(t_symbol *s,  long argc, t_atom *argv) {
     
     if (argc) {
         if(!do_read(buf_name))
-            set_buffer(buf_name, B_SOLO); // first argument
+            set_buffer(buf_name, BUF_MAIN); // first argument
     }
     else post("no score preloaded");
     
@@ -412,7 +413,7 @@ void Raskell::perform(double *in, long sampleframes, int dest) {
 		outlet_bang(max->out_beats);
 
 		switch (dest) {
-		case (B_SOLO) : 
+		case (BUF_MAIN) : 
 			if (input_sel != IN_LIVE && iter) { // looking at reference
 				y_beats[0].push_back(iter);  // beat pos
 				y_beats[1].push_back(0);	// diff from acco beat (computed below in feats())
@@ -451,7 +452,7 @@ void Raskell::perform(double *in, long sampleframes, int dest) {
 			}
 			break;
 
-		case (B_ACCO) : // looking at accompaniment
+		case (BUF_ACCO) : // looking at accompaniment
 			if (acc_iter) {
 				add_beat(acc_iter, beat->getCurrentTempoEstimate());
 			}
@@ -469,7 +470,7 @@ void Raskell::perform(double *in, long sampleframes, int dest) {
 	}
 	for(i=0; i<active_frames; i++) {
 		if(frame_index[i]==0) {		// if frame is full, then compute feature vector
-			if (dest != B_ACCO) {
+			if (dest != BUF_ACCO) {
 				if (zeros(in, sampleframes)) {
 					for (i=0; i<params; i++)
 						tfeat[i] = 0.0001;
@@ -497,7 +498,7 @@ void Raskell::perform(double *in, long sampleframes, int dest) {
 				}
 				feats(params);
 			}
-			if (dest == B_ACCO)
+			if (dest == BUF_ACCO)
 				acc_iter++; // count frames for ACCO beat marking
 		}
 	}
@@ -1113,17 +1114,18 @@ void Raskell::beat_switch() {
 	if (tempo > 0.01) {
 		if (tempo < 3 && tempo > 0.33) {
 			outlet_float(max->out_tempo, tempo);
-			h_real += tempo;
+			post("tempo out %f", tempo);
 		} else {
-//			post("OUT OF CONTROL tempo = %f", tempo);
-			tempo = beat_tempo;			
-			h_real += tempo;
+			post("OUT OF CONTROL tempo = %f", tempo);
+			tempo = beat_tempo;		
 			waiting = (int)(fsize / beat_length) * beat_length;
-		}
+		}		
+		h_real += tempo;
 	}
 	
 	// output real H
 	if (h_real > 8 && !(t % 9)) {
+		post("h %d hreal %f tempo %f", h, h_real, tempo);
 		atom_setsym(dump, gensym("h_real"));
 		atom_setfloat(dump+1, h_real);
 		// output real H (scaled)
@@ -1409,9 +1411,9 @@ void Raskell::set_buffer(t_symbol *s, int dest) {
 		}
 		long frames = buffer_getframecount(b);
 		post("Buffer is %d samples long", frames);
-		if (dest == B_SOLO && input_sel == IN_SCORE) {// make new score
+		if (dest == BUF_MAIN && input_sel == IN_SCORE) {// make new score
 			score_size((long)(frames / HOP_SIZE));
-			warp->addMarkerToScore(1); // add marker at start (position 1)
+//			warp->addMarkerToScore(1); // add marker at start (position 1)
 			iter = 0;
 		}
 
