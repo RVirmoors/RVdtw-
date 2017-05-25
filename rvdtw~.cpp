@@ -1086,6 +1086,7 @@ void Raskell::beat_switch() {
 	// sensitivity to tempo fluctuations:
 	if (abs(error) > pow(1.f-sensitivity, 2)*100.f + abs(minerr)) {
 //		post ("waiting %i . tempo %f - %f beat_tempo", waiting, tempo_avg, beat_tempo);
+//      post("error %f . H deviation %f ", b_err[b_start][0], error );
 		if (abs(b_err[b_start][0]) > 15 && abs(tempo_avg - beat_tempo) > 0.15 && beat_due) {
 			// DTW is way off, beat tracker takes over
 //			post("oDTW is off, BT on! %f != %f. beat length = %d", tempo_avg, beat_tempo, beat_length);
@@ -1097,14 +1098,15 @@ void Raskell::beat_switch() {
 		} else {
 			if (tempo_mode == 2) {
 				h_real = h;
-				h_real += tempo;
+//				h_real += tempo;
 				post("moved H_real to H");
 			}
-			tempo = calc_tempo(tempo_model);	
+			tempo = calc_tempo(tempo_model);
 			tempo_mode = 1;
 		}
 	}		
 	else if (abs(error) <= 1 && tempo_mode && t > step) {
+//        post("disengage");
 		tempo = b_err[(b_start-step+bsize)%bsize][3];
 		tempo_mode = 0;
 	}
@@ -1114,9 +1116,9 @@ void Raskell::beat_switch() {
 	if (tempo > 0.01) {
 		if (tempo < 3 && tempo > 0.33) {
 			outlet_float(max->out_tempo, tempo);
-			post("tempo out %f", tempo);
+			post("tempo out %f mode %d", tempo, tempo_mode);
 		} else {
-			post("OUT OF CONTROL tempo = %f", tempo);
+			post("OUT OF CONTROL tempo = %f, mode %d", tempo, tempo_mode);
 			tempo = beat_tempo;		
 			waiting = (int)(fsize / beat_length) * beat_length;
 		}		
@@ -1413,7 +1415,7 @@ void Raskell::set_buffer(t_symbol *s, int dest) {
 		post("Buffer is %d samples long", frames);
 		if (dest == BUF_MAIN && input_sel == IN_SCORE) {// make new score
 			score_size((long)(frames / HOP_SIZE));
-//			warp->addMarkerToScore(1); // add marker at start (position 1)
+			warp->addMarkerToScore(1); // add marker at start (position 1)
 			iter = 0;
 		}
 
