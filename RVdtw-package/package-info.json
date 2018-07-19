@@ -1,0 +1,36 @@
+{
+	"author" : "Grigore Burloiu",
+	"authors" : [  ],
+	"description" : "An online-DTW based performance alignment and tracking external for Max/MSP",
+	"displayname" : "",
+	"extends" : "",
+	"extensible" : 0,
+	"homepatcher" : "RVdtw Overview.maxpat",
+	"max_version_max" : "none",
+	"max_version_min" : "none",
+	"name" : "RVdtw",
+	"os" : 	{
+		"macintosh" : 		{
+			"platform" : [ "ia32", "x64" ],
+			"min_version" : "none"
+		}
+,
+		"windows" : 		{
+			"platform" : [ "ia32" ],
+			"min_version" : "none"
+		}
+
+	}
+	"version" : "0.3",
+	"website" : "https://github.com/RVirmoors/RVdtw-",
+	"filelist" : 	{
+		"externals" : [ "rvdtw~.mxe", "rvdtw~.mxo" ],
+		"help" : [ "rvdtw~.maxhelp" ],
+		"media" : [ "default-score-acco.txt", "acco.wav", "reference.wav" ],
+		"support" : [ "libfftw3-3.dll", "libsamplerate.dll" ]
+		"extras" : [ "RVdtw Overview.maxpat" ]
+	}
+,
+	"c74install" : 1,
+	"installdate" : -755120588
+}
