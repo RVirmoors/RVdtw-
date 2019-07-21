@@ -39,7 +39,6 @@ Version history:
 #ifdef USE_FFTW
 #include <fftw3.h>
 #endif
-//#include "gist.h"
 #include "chromagram.h"
 #include "BTrack.h"
 #include "oDTW.h"
@@ -181,7 +180,6 @@ public:
 	fftw_complex *out;
     fftw_plan plan, dct;
 #endif
-	//Gist<double> *gist;
 	BTrack *beat;
 	Chromagram *chroma;
 	vector<double> chr;

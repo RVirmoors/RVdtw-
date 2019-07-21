@@ -24,9 +24,7 @@ Check out the [oDTW](https://github.com/RVirmoors/RVdtw-/tree/master/oDTW) subfo
 
 ## Compilation
 
-The included VS2010 and Xcode projects should do the trick. Email me if you encounter problems: gburloiu AT gmail.
-
-I do intend to upgrade to the latest VS at some point.
+The included VS(2017) and Xcode projects should do the trick. Email me if you encounter problems: grigore.burloiu@unatc.ro
 
 ### Dependencies
 
