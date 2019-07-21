@@ -55,26 +55,26 @@
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC71.props" />
-    <Import Project="..\max-sdk-8.0.3\source\c74support\max-includes\max_extern_common.props" />
-    <Import Project="..\max-sdk-8.0.3\source\c74support\max-includes\max_extern_x86.props" />
+    <Import Project="..\..\c74support\max-includes\max_extern_common.props" />
+    <Import Project="..\..\c74support\max-includes\max_extern_x86.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC71.props" />
-    <Import Project="..\max-sdk-8.0.3\source\c74support\max-includes\max_extern_common.props" />
-    <Import Project="..\max-sdk-8.0.3\source\c74support\max-includes\max_extern_x86.props" />
+    <Import Project="..\..\c74support\max-includes\max_extern_common.props" />
+    <Import Project="..\..\c74support\max-includes\max_extern_x86.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC71.props" />
-    <Import Project="..\max-sdk-8.0.3\source\c74support\max-includes\max_extern_common.props" />
-    <Import Project="..\max-sdk-8.0.3\source\c74support\max-includes\max_extern_x64.props" />
+    <Import Project="..\..\c74support\max-includes\max_extern_common.props" />
+    <Import Project="..\..\c74support\max-includes\max_extern_x64.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC71.props" />
-    <Import Project="..\max-sdk-8.0.3\source\c74support\max-includes\max_extern_common.props" />
-    <Import Project="..\max-sdk-8.0.3\source\c74support\max-includes\max_extern_x64.props" />
+    <Import Project="..\..\c74support\max-includes\max_extern_common.props" />
+    <Import Project="..\..\c74support\max-includes\max_extern_x64.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
@@ -84,7 +84,7 @@
     <LinkIncremental>true</LinkIncremental>
     <TargetExt>.mxe</TargetExt>
     <OutDir>$(C74SUPPORT)..\sdk-build\</OutDir>
-    <IncludePath>..\max-sdk-8.0.3\source\audio\rvdtw~;..\fftw\32;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)\fftw\32;$(ProjectDir)\Chroma\src;$(ProjectDir)\Gist\src;$(ProjectDir);$(ProjectDir)\BTrack\src;$(ProjectDir)\libsamplerate;$(ProjectDir)\oDTW\;$(IncludePath)</IncludePath>
     <LibraryPath>$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
