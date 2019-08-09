@@ -1,6 +1,6 @@
 // defines.h
 //
-// 2014-2016 Grigore Burloiu
+// 2014-2019 Grigore Burloiu
 //
 // int defines
 

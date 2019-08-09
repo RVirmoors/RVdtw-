@@ -1,6 +1,6 @@
 // rvdtw~.cpp
 //
-// Copyright (C) 2014-2017 Grigore Burloiu
+// Copyright (C) 2014-2019 Grigore Burloiu rvirmoors.github.io
 /*
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,6 +15,8 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
+
+#define DEBUG true
 
 #include <rvdtw~.h>
 
@@ -129,7 +131,7 @@ void RVdtw_beat(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv) {
 	t_uint16 pos = atom_getlong(argv);
 	double tempo = atom_getfloat(argv+1);
 	x->rv->add_beat(pos, tempo);
-	post("beat at %d, tempo %.3f. total beats: %d", pos, tempo, x->rv->acc_beats[0].size());
+	if (DEBUG) post("beat at %d, tempo %.3f. total beats: %d", pos, tempo, x->rv->acc_beats[0].size());
 }
 
 void RVdtw_read(t_RVdtw *x, t_symbol *s) {
@@ -154,7 +156,7 @@ void RVdtw_do_read(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv) {
 		x->rv->set_buffer(s, v); // then treat it as a buffer
 	if (v == BUF_MAIN) {
 		x->rv->getscoredims();
-		x->rv->dumpscore();
+//		x->rv->dumpscore();
 	}
 }
 
@@ -884,7 +886,7 @@ double Raskell::calc_tempo(int mode) {
 			else { 			
 				if(beat_due) {
 					// updated every beat
-					post("update tempo, beat ela: %f", elast_beat);
+					if (DEBUG) post("update tempo, beat ela: %f", elast_beat);
 					new_tempo = (double)(warp->getHistory(t) - warp->getHistory(last_beat)) / (t - last_beat);
 					last_beat = t;
 				}
@@ -896,7 +898,7 @@ double Raskell::calc_tempo(int mode) {
 			else { 		
 				if (beat_due) {
 					// tempo model in Papiotis10, updated every beat
-					if(elast_beat == 1) post("update tempo 1");
+                    if(elast_beat == 1) {if (DEBUG) post("update tempo 1");}
 					else post ("%.2f", elast_beat);
 					new_tempo = (double)(warp->getHistory(t) - warp->getHistory(last_beat)) / (t - last_beat);
 					double boost = error / ((double)(t - last_beat)*10);
@@ -921,7 +923,7 @@ double Raskell::calc_tempo(int mode) {
 					//post("err = %f // int = %f // der = %f", Kp*error, Ki*integral, Kd*derivate);
 					double boost = (Kp*error + Ki*integral + Kd * derivate) / ((double)(t - last_beat));
 					new_tempo += boost;
-					post("new tempo %f, hop size %d, b # %d", new_tempo, beat->getHopSize(), t/step);
+					if (DEBUG) post("new tempo %f, hop size %d, b # %d", new_tempo, beat->getHopSize(), t/step);
 					last_beat = t;
 				}
 			}
@@ -1099,7 +1101,7 @@ void Raskell::beat_switch() {
 			if (tempo_mode == 2) {
 				h_real = h;
 //				h_real += tempo;
-				post("moved H_real to H");
+				if (DEBUG) post("moved H_real to H");
 			}
 			tempo = calc_tempo(tempo_model);
 			tempo_mode = 1;
@@ -1116,9 +1118,9 @@ void Raskell::beat_switch() {
 	if (tempo > 0.01) {
 		if (tempo < 3 && tempo > 0.33) {
 			outlet_float(max->out_tempo, tempo);
-			post("tempo out %f mode %d", tempo, tempo_mode);
+			if (DEBUG) post("tempo out %f mode %d", tempo, tempo_mode);
 		} else {
-			post("OUT OF CONTROL tempo = %f, mode %d", tempo, tempo_mode);
+			if (DEBUG) post("OUT OF CONTROL tempo = %f, mode %d", tempo, tempo_mode);
 			tempo = beat_tempo;		
 			waiting = (int)(fsize / beat_length) * beat_length;
 		}		
@@ -1127,7 +1129,7 @@ void Raskell::beat_switch() {
 	
 	// output real H
 	if (h_real > 8 && !(t % 9)) {
-		post("h %d hreal %f tempo %f", h, h_real, tempo);
+		if (DEBUG) post("h %d hreal %f tempo %f", h, h_real, tempo);
 		atom_setsym(dump, gensym("h_real"));
 		atom_setfloat(dump+1, h_real);
 		// output real H (scaled)
