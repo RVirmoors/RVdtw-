@@ -123,7 +123,7 @@
       <WarningLevel>Level3</WarningLevel>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <CompileAs>CompileAsCpp</CompileAs>
+      <CompileAs>Default</CompileAs>
     </ClCompile>
     <Link>
       <OutputFile>$(OutDir)$(ProjectName).mxe</OutputFile>
@@ -164,7 +164,7 @@
       <WarningLevel>Level3</WarningLevel>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <CompileAs>CompileAsC</CompileAs>
+      <CompileAs>Default</CompileAs>
     </ClCompile>
     <Link>
       <OutputFile>$(OutDir)$(ProjectName).mxe64</OutputFile>
@@ -208,7 +208,7 @@
       <WarningLevel>Level3</WarningLevel>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <CompileAs>CompileAsCpp</CompileAs>
+      <CompileAs>Default</CompileAs>
     </ClCompile>
     <Link>
       <OutputFile>$(OutDir)$(ProjectName).mxe</OutputFile>
@@ -255,7 +255,7 @@
       <WarningLevel>Level3</WarningLevel>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <CompileAs>CompileAsC</CompileAs>
+      <CompileAs>Default</CompileAs>
     </ClCompile>
     <Link>
       <OutputFile>$(OutDir)$(ProjectName).mxe64</OutputFile>
@@ -278,6 +278,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="$(C74SUPPORT)\max-includes\common\dllmain_win.c" />
+    <ClCompile Include="libsamplerate\src\samplerate.c" />
     <ClCompile Include="BTrack\src\BTrack.cpp" />
     <ClCompile Include="BTrack\src\OnsetDetectionFunction.cpp" />
     <ClCompile Include="Chord-Detector-and-Chromagram\src\ChordDetector.cpp" />
