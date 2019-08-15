@@ -27,7 +27,7 @@ Version history:
 */
 
 // TO DO: make separate class for TEMPO MODELS
-// TO DO: linear interpolation of SEN between beats ?
+// TO DO: linear interpolation of SEN between beats ? // elast_beat
 
 #include "ext.h"			// standard Max include, always required (except in Jitter)
 #include "ext_obex.h"		// required for "new" style objects
