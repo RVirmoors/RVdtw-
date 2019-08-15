@@ -28,7 +28,7 @@ Version history:
 */
 
 // TO DO: make separate class for TEMPO MODELS
-// TO DO: linear interpolation of SEN between beats ? // elast_beat
+// TO DO: linear interpolation of SEN between beats ? -> elast_beat
 
 #include "ext.h"			// standard Max include, always required (except in Jitter)
 #include "ext_obex.h"		// required for "new" style objects
@@ -59,12 +59,12 @@ Version history:
 #define WINDOW_SIZE 2048
 #define HOP_SIZE 512
 
-
-// compression params
+// compression params (MFCC processing)
 #define COMP_THRESH -140
 #define COMP_RELEASE 2
 #define COMP_RATIO 8
 
+// tempo tracking params
 #define SEN 1 // 0.9 // 0.98//1
 #define ELA 1 // 1
 
@@ -134,22 +134,20 @@ public:
 
 	// internal vars:
 	long ysize;
-	//t_uint16 t, t_mod, h, h_mod, previous, iter;
     t_uint16 iter;
 	double h_real;
-	//vector<vector<t_atom_float> > x, y;
-	//vector<t_uint16> history, b_path;
 	vector<vector<double> > b_err;
-	//vector<vector<double> > Dist, dtw, b_dtw, b_move;
 	t_uint16 b_start, bh_start, bsize;
-	//double b_avgerr;
-	//float mid_weight, top_weight, bot_weight;
-	bool follow;
+    bool follow;
+    unsigned int fsize;
+    
+    t_uint16 input_sel;
+    t_atom dump[50];
 
     unsigned int params;    // number of params in feature vectors
 	unsigned int features;  // MFCCs or chroma vectors
-	//vector<vector<double> > markers;
 
+    //      tempo model vars:
 	deque<t_uint16> Deque;
 	double tempo, tempotempo, tempo_avg;
 	int tempo_model;
@@ -162,11 +160,7 @@ public:
 	float sensitivity; // tempo fluctuations
 	float elasticity; // tempo response amp.
 	float error; // tempo tracking error vs DTW path / beats
-    unsigned int fsize;
 
-	//t_uint16 runCount, maxRunCount, m_iter, m_ideal_iter, m_count;
-    t_uint16 input_sel;
-	t_atom dump[50];
 
 	//		DSP vars:
 	long dsp_vector_size; 
@@ -230,17 +224,6 @@ public:
 	void reset_feat();
 	void calc_mfcc(t_uint16 frame_to_fft);
 	double compress(double value, bool active);
-
-	// DTW methods:
-//	void init_dtw();
-//	void distance(t_uint16 i, t_uint16 j);	
-//	t_uint16 get_inc();
-//	void calc_dtw(t_uint16 i, t_uint16 j);
-//	void dtw_process();
-//	void increment_t();
-//	void increment_h();
-//	bool decrease_h();
-//	void dtw_back();
 
 	// tempo model methods:
 	double calc_tempo(int mode);
