@@ -646,7 +646,7 @@ void Raskell::reset() {
 	integral = t_passed = last_arzt = 0;	
 	tempos.clear(); errors.clear();
 	acc_iter = b_iter = prev_h_beat = 0;
-	tempo_mode = 0;
+	tempo_mode = OFF;
 
 	reset_feat();
 
@@ -1096,7 +1096,7 @@ void Raskell::beat_switch() {
 		}
 		if (waiting) {
 			tempo = beat_tempo;		
-			tempo_mode = 2;
+			tempo_mode = BEAT;
 		} else {
 			if (tempo_mode == 2) {
 				h_real = h;
@@ -1104,13 +1104,13 @@ void Raskell::beat_switch() {
 				if (DEBUG) post("moved H_real to H");
 			}
 			tempo = calc_tempo(tempo_model);
-			tempo_mode = 1;
+			tempo_mode = DTW;
 		}
 	}		
 	else if (abs(error) <= 1 && tempo_mode && t > step) {
 //        post("disengage");
 		tempo = b_err[(b_start-step+bsize)%bsize][3];
-		tempo_mode = 0;
+		tempo_mode = OFF;
 	}
 
 	if(waiting > 0) waiting--;

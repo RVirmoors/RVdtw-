@@ -11,7 +11,10 @@
 #define IN_LIVE 2
 #define OUT_IO 3
 
-
+// tempo modes:
+#define OFF 0
+#define DTW 1
+#define BEAT 2
 
 // tempo models:
 #define T_DTW 0
@@ -22,7 +25,6 @@
 #define Kd 0.4 //2.5
 #define T_DEQ 3
 #define T_ARZT 4
-
 
 // audio features
 #define MFCCS 1

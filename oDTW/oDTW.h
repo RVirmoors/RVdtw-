@@ -34,7 +34,11 @@
 #define M_IDEAL 3
 #define M_LIVE 4
 
-
+// back:
+#define B_ERROR 0
+#define B_T 1
+#define B_H 2
+#define B_TEMPO 3
 
 // == DTW params ==
 #define	FSIZE 128//32 // DTW window length (# of input frames)

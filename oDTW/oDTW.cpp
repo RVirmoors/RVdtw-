@@ -467,10 +467,10 @@ void oDTW::dtw_back() {
 	short B = 8;	// look back every B frames
 	int step = bsize / 8;	// compute local tempo over step*2 frames
     
-    b_err[b_start][0] = 0.f; // error; to be computed after t > bsize, below
-    b_err[b_start][1] = t;
-    b_err[b_start][2] = h;
-    b_err[b_start][3] = h - history[t-1]; // local tempo
+    b_err[b_start][B_ERROR] = 0.f; // error; to be computed after t > bsize, below
+    b_err[b_start][B_T] = t;
+    b_err[b_start][B_H] = h;
+    b_err[b_start][B_TEMPO] = h - history[t-1]; // local tempo
 
 /*
 #ifdef __APPLE__
@@ -482,8 +482,8 @@ void oDTW::dtw_back() {
     if (t >= bsize && h >= bsize) { // now that b_dtw[][] is full:
 
 		if (t % B) { // if not looking back, then error&tempo remain the same
-			b_err[b_start][0]					 = b_err[(b_start-1+bsize)%bsize][0];
-			b_err[(b_start-step+bsize)%bsize][3] = b_err[(b_start-step-1+bsize)%bsize][3];
+			b_err[b_start][B_ERROR]					   = b_err[(b_start-1+bsize)%bsize][B_ERROR];
+			b_err[(b_start-step+bsize)%bsize][B_TEMPO] = b_err[(b_start-step-1+bsize)%bsize][B_TEMPO];
 		}
 		else { // every B frames, let's look back:
 			double top, mid, bot, cheapest;
@@ -537,13 +537,13 @@ void oDTW::dtw_back() {
 				}
 			}
         
-			b_err[b_start][0] = history[b_t] - b_h;
+			b_err[b_start][B_ERROR] = history[b_t] - b_h;
 
         
-			if (b_err[b_start][0] > 5) { // gotta go DOWN
+			if (b_err[b_start][B_ERROR] > 5) { // gotta go DOWN
 				if (bot_weight < 20) bot_weight += fabs(b_err[b_start][0]) / 50;
 			}
-			else if (b_err[b_start][0] < -5) {	// gotta go UP
+			else if (b_err[b_start][B_ERROR] < -5) {	// gotta go UP
 				if (top_weight < 20) top_weight += fabs(b_err[b_start][0]) / 50;
 			}
 			else {
@@ -551,9 +551,9 @@ void oDTW::dtw_back() {
 			}
 
 			if (t > step * 2) {
-				// compute local tempo based on back DTW history:
-				b_err[(b_start-step+bsize)%bsize][3] =
-				(float)(h - b_err[(b_start-(step*2)+bsize)%bsize][2] + 1) / (t - b_err[(b_start-(step*2)+bsize)%bsize][1] + 1);
+				// compute local tempo based on back DTW history: h-H_back / t-T_back
+				b_err[(b_start-step+bsize)%bsize][B_TEMPO] =
+				(float)(h - b_err[(b_start-(step*2)+bsize)%bsize][B_H] + 1) / (t - b_err[(b_start-(step*2)+bsize)%bsize][B_T] + 1);
 			}
 		}
     }
