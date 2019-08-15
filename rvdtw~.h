@@ -16,11 +16,12 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#define RV_VERSION 0.302
+#define RV_VERSION 0.303
 
 /*
 
 Version history:
+0.303 - Aug 2019 work towards symbolic expressive acco
 0.302 - updates for M4L/MIDIacco support
 0.3 - added beat tracking module
 

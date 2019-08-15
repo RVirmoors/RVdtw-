@@ -166,6 +166,7 @@ void oDTW::start() {
     }
     
     history.clear();
+	history.resize(ysize * 3); // leave room for t be 3 times longer than h
     
     b_dtw.clear();
     b_dtw.resize(bsize);

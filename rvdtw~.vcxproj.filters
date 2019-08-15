@@ -12,9 +12,24 @@
     <ClCompile Include="oDTW\oDTW.cpp">
       <Filter>oDTW</Filter>
     </ClCompile>
-    <ClCompile Include="Chord-Detector-and-Chromagram\src\ChordDetector.cpp" />
-    <ClCompile Include="Chord-Detector-and-Chromagram\src\Chromagram.cpp" />
-    <ClCompile Include="libsamplerate\src\samplerate.c" />
+    <ClCompile Include="libsamplerate\src\samplerate.c">
+      <Filter>libsamplerate</Filter>
+    </ClCompile>
+    <ClCompile Include="libsamplerate\src\src_sinc.c">
+      <Filter>libsamplerate</Filter>
+    </ClCompile>
+    <ClCompile Include="libsamplerate\src\src_linear.c">
+      <Filter>libsamplerate</Filter>
+    </ClCompile>
+    <ClCompile Include="libsamplerate\src\src_zoh.c">
+      <Filter>libsamplerate</Filter>
+    </ClCompile>
+    <ClCompile Include="Chord-Detector-and-Chromagram\src\ChordDetector.cpp">
+      <Filter>Chroma</Filter>
+    </ClCompile>
+    <ClCompile Include="Chord-Detector-and-Chromagram\src\Chromagram.cpp">
+      <Filter>Chroma</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="defines.h" />
@@ -29,6 +44,12 @@
     </Filter>
     <Filter Include="oDTW">
       <UniqueIdentifier>{bcf49ced-e4ac-4a4e-92d8-a9f1471aeb20}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="libsamplerate">
+      <UniqueIdentifier>{1932b434-54fb-46e6-8719-f1cbdb55dbb2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Chroma">
+      <UniqueIdentifier>{ae376384-8484-43b3-ba92-31acac9fee92}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>
