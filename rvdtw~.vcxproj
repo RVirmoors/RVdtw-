@@ -295,11 +295,16 @@
     <ClCompile Include="libsamplerate\src\src_zoh.c" />
     <ClCompile Include="oDTW\oDTW.cpp" />
     <ClCompile Include="rvdtw~.cpp" />
+    <ClCompile Include="ted\ted.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="defines.h" />
     <ClInclude Include="oDTW\oDTW.h" />
     <ClInclude Include="rvdtw~.h" />
+    <ClInclude Include="ted\ted.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="ted\README.md" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

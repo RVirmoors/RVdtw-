@@ -30,12 +30,18 @@
     <ClCompile Include="Chord-Detector-and-Chromagram\src\Chromagram.cpp">
       <Filter>Chroma</Filter>
     </ClCompile>
+    <ClCompile Include="ted\ted.cpp">
+      <Filter>ted</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="defines.h" />
     <ClInclude Include="rvdtw~.h" />
     <ClInclude Include="oDTW\oDTW.h">
       <Filter>oDTW</Filter>
+    </ClInclude>
+    <ClInclude Include="ted\ted.h">
+      <Filter>ted</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -51,5 +57,13 @@
     <Filter Include="Chroma">
       <UniqueIdentifier>{ae376384-8484-43b3-ba92-31acac9fee92}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ted">
+      <UniqueIdentifier>{1eea9ad0-4f48-4ef7-b1dc-996848c0adf9}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="ted\README.md">
+      <Filter>ted</Filter>
+    </None>
   </ItemGroup>
 </Project>
