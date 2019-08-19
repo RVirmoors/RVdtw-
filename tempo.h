@@ -1,4 +1,4 @@
-// ted.cpp
+// tempo.h
 //
 // Copyright (C) 2014-2019 Grigore Burloiu
 /*
@@ -16,14 +16,22 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "ted.h"
-#include "tempo.h"
+#pragma once
 
-Ted::Ted() {
-}
+#include <vector>
+using namespace std;
 
+class TempoModel
+{
+public:
+	// constructor & destructor
+	TempoModel();
+	~TempoModel();
 
-Ted::~Ted() {
-}
+	//
+private:
+	// internal methods
 
-// ====== public methods ==========
+	// internal vars
+};
+

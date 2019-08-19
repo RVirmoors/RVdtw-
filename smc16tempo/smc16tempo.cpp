@@ -1,4 +1,4 @@
-// ted.cpp
+// smc16tempo.cpp
 //
 // Copyright (C) 2014-2019 Grigore Burloiu
 /*
@@ -16,14 +16,13 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "ted.h"
 #include "tempo.h"
 
-Ted::Ted() {
+TempoModel::TempoModel() {
 }
 
 
-Ted::~Ted() {
+TempoModel::~TempoModel() {
 }
 
 // ====== public methods ==========
