@@ -27,7 +27,6 @@ Version history:
 
 */
 
-// TO DO: make separate class for TEMPO MODELS
 // TO DO: linear interpolation of SEN between beats ? -> elast_beat
 
 #include "ext.h"			// standard Max include, always required (except in Jitter)
@@ -43,6 +42,7 @@ Version history:
 #include "chromagram.h"
 #include "BTrack.h"
 #include "oDTW.h"
+#include "tempo.h"
 
 #include <algorithm>
 #include <cstdio>
@@ -148,7 +148,7 @@ public:
 	unsigned int features;  // MFCCs or chroma vectors
 
     //      tempo model vars:
-	deque<t_uint16> Deque;
+/*	deque<t_uint16> Deque;
 	double tempo, tempotempo, tempo_avg;
 	int tempo_model;
 	double pivot1_t, pivot1_h, pivot1_tp, pivot2_t, pivot2_h, pivot2_tp;
@@ -160,7 +160,7 @@ public:
 	float sensitivity; // tempo fluctuations
 	float elasticity; // tempo response amp.
 	float error; // tempo tracking error vs DTW path / beats
-
+*/
 
 	//		DSP vars:
 	long dsp_vector_size; 
@@ -179,6 +179,7 @@ public:
 	Chromagram *chroma;
 	vector<double> chr;
     oDTW *warp;
+    TempoModel *tempoModel;
 
 	//		beat tracking vars:
 	vector<vector<float> > acc_beats; // acc_beats[0][]: beats, acc_beats[1][]: tempo
@@ -226,7 +227,7 @@ public:
 	double compress(double value, bool active);
 
 	// tempo model methods:
-	double calc_tempo(int mode);
+//	double calc_tempo(int mode);
 
 	// beat methods:
     void beat_switch();

@@ -206,13 +206,13 @@ void RVdtw_follow(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv) {
 }
 
 void RVdtw_sensitivity(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv) {
-	x->rv->sensitivity = atom_getfloat(argv);
-	post("Sensitivity to tempo fluctuations is %.2f", x->rv->sensitivity);
+	x->rv->tempoModel->setSensitivity(atom_getfloat(argv));
+	//post("Sensitivity to tempo fluctuations is %.2f", x->rv->sensitivity);
 }
 
 void RVdtw_elasticity(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv) {
-	x->rv->elasticity = atom_getfloat(argv);
-	post("Elasticity of tempo model is %.2f", x->rv->elasticity);
+	x->rv->tempoModel->setElasticity(atom_getfloat(argv));
+	//post("Elasticity of tempo model is %.2f", x->rv->elasticity);
 }
 
 void RVdtw_getscoredims(t_RVdtw *x, t_symbol *s) {
@@ -333,6 +333,7 @@ Raskell::Raskell() {
 		chr.clear();
 		chr.resize(12);
         warp = new oDTW(128, 256, true);
+        tempoModel = new TempoModel(warp);
 
 		l_buffer_reference = NULL;
 		score_name = live_name = "";

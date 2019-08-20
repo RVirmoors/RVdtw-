@@ -18,7 +18,10 @@
 
 #include "tempo.h"
 
-TempoModel::TempoModel() {
+TempoModel::TempoModel(oDTW *warp_) :
+    warp(warp_)
+{
+    
 }
 
 
@@ -26,3 +29,11 @@ TempoModel::~TempoModel() {
 }
 
 // ====== public methods ==========
+
+void TempoModel::setSensitivity(float sen) {
+    sensitivity = sen;
+}
+
+void TempoModel::setElasticity(float ela) {
+    elasticity = ela;
+}
