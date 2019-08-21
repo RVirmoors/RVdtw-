@@ -18,28 +18,11 @@
 
 #pragma once
 
+#include "defines.h"
 #include "oDTW.h"
+#include "BTrack.h"
 #include <vector>
 #include <deque>
-
-// tempo tracking params
-#define SEN 1 // 0.9 // 0.98//1
-#define ELA 1 // 1
-
-// tempo modes:
-#define OFF 0
-#define DTW 1
-#define BEAT 2
-
-// tempo models:
-#define T_DTW 0
-#define T_P 1
-#define T_PID 2
-#define Kp 0.017 //0.017 //0.5 // 0.1467
-#define Ki 0.0003//0.0004 // 0.0007 // 0.01 // 0.005051
-#define Kd 0.4 //2.5
-#define T_DEQ 3
-#define T_ARZT 4
 
 using namespace std;
 
@@ -50,16 +33,50 @@ public:
 	TempoModel(oDTW *warp_);
 	~TempoModel();
 
+	// reset all vars
+	void start();
+
 	// set Sensitivity to tempo fluctuations [0...1]
     void setSensitivity(float sen);
     
     // set Elasticity of tempo model [0...1...]
     void setElasticity(float ela);
+
+	// get "real" score coordinate, produced by applying the TempoModel to the oDTW path
+	double getHreal();
+
+	// set new score time. Use with caution - causes the system to effectively jump in time!
+	void setHreal(unsigned int to_h);
+
+	// get tempo
+	double getTempo();
+
+	// get tempo mode (OFF / oDTW / BEAT)
+	short getTempoMode();
+
+	// get total number of acco beats
+	unsigned int getAccBeats();
+
+	// get total number of Y reference beats
+	unsigned int getYBeats();
+
+	// perform beat tracking. Returns TRUE if beat in current *in frame, FALSE otherwise
+	// in: (audio) input frame
+	// source: input select (live / reference, see defines.h)
+	// dest: buffer target (main / acco, see defines.h)
+	// frame_index: frames elapsed in selected buffer
+	bool performBeat(double *in, short source, short dest, unsigned int frame_index);
+
+	void incrementAccIter();
+
+	// compute frame differences between Y and Acco. Returns overall average diff.
+	float computeYAccbeatDiffs();
     
 private:
 	// internal vars
     oDTW *warp;
-    float sr;
+	BTrack *beat;
+
     deque<unsigned int> Deque;
     double tempo, tempotempo, tempo_avg;
     int tempo_model;
@@ -72,10 +89,12 @@ private:
     float sensitivity; // tempo fluctuations
     float elasticity; // tempo response amp.
     float error; // tempo tracking error vs DTW path / beats
+	vector<vector<double> > b_err; // backwards oDTW path error
+	double h_real; // "real" score coordinate produced by applying the TempoModel to the oDTW path
     
     // beat tracking vars
-    vector<vector<float> > acc_beats; // acc_beats[0][]: beats, acc_beats[1][]: tempo
-    vector<vector<float> > y_beats; // y_beats[0][]: beats, y_beats[1][]: diffs to acco
+    vector<vector<float> > acc_beats; // acc_beats[0][]: beats; acc_beats[1][]: tempo
+    vector<vector<float> > y_beats; // y_beats[0][]: beats; y_beats[1][]: diffs to acco
     unsigned int acc_iter, b_iter;
     double prev_h_beat;
     float b_stdev, minerr;

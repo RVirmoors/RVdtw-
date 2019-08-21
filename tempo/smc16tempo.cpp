@@ -21,23 +21,10 @@
 TempoModel::TempoModel(oDTW *warp_) :
     warp(warp_)
 {
+	beat = new BTrack();
     sensitivity = SEN; // sens. to tempo fluctuations
     elasticity = ELA;
-    
-    tempo = tempo_avg = 1;
-    tempotempo = 0;
-    
-    elast_beat = 1;
-    beat_due = false;
-    acc_iter = b_iter = prev_h_beat = 0;
-    ref_tempo = 120;
-    integral = t_passed = last_arzt = 0;
-    tempos.clear(); errors.clear();
-    
-    y_beats.clear();
-    y_beats.resize(2);
-    acc_beats.clear();
-    acc_beats.resize(2);
+	start();
 }
 
 
@@ -46,12 +33,134 @@ TempoModel::~TempoModel() {
 
 // ====== public methods ==========
 
+void TempoModel::start() {
+	h_real = 0;
+	tempo = tempo_avg = 1;
+	tempotempo = 0;
+
+	elast_beat = 1;
+	beat_due = false;
+	acc_iter = b_iter = prev_h_beat = 0;
+	ref_tempo = 120;
+	integral = t_passed = last_arzt = 0;
+	tempos.clear(); errors.clear();
+
+	y_beats.clear();
+	y_beats.resize(2);
+	acc_beats.clear();
+	acc_beats.resize(2);
+}
+
 void TempoModel::setSensitivity(float sen) {
     sensitivity = sen;
 }
 
 void TempoModel::setElasticity(float ela) {
     elasticity = ela;
+}
+
+double TempoModel::getHreal() {
+	return h_real;
+}
+
+void TempoModel::setHreal(unsigned int to_h) {
+	h_real = to_h;
+}
+
+double TempoModel::getTempo() {
+	return tempo;
+}
+
+short TempoModel::getTempoMode() {
+	return tempo_mode;
+}
+
+unsigned int TempoModel::getAccBeats() {
+	return acc_beats[A_BEATPOS].size();
+}
+
+unsigned int TempoModel::getYBeats() {
+	return y_beats[Y_BEATPOS].size();
+}
+
+bool TempoModel::performBeat(double *in, short source, short dest, unsigned int frame_index) {
+	beat->processAudioFrame(in);
+
+	if (beat->beatDueInCurrentFrame()) { // beat detected
+		
+		switch (dest) {
+		case (BUF_MAIN):
+			if (source != IN_LIVE && frame_index) { 
+				// looking at reference
+				y_beats[Y_BEATPOS].push_back(frame_index);  // beat pos
+				y_beats[Y_DIFF].push_back(0);	// diff from acco beat (computed at the end, once the whole score is loaded)
+			}
+			else if (y_beats[Y_BEATPOS].size() && h_real) { 
+				// looking at live target
+				float diff_y, diff_acc;
+				// check if live beat aligns with predicted beats
+				b_iter = update_beat_iter(b_iter, &y_beats[0], h_real);
+				diff_y = calc_beat_diff(h_real, prev_h_beat, y_beats[0][b_iter]);
+				if (acc_beats[A_BEATPOS].size()) {
+					acc_iter = update_beat_iter(acc_iter, &acc_beats[A_BEATPOS], h_real);
+					diff_acc = calc_beat_diff(h_real, prev_h_beat, acc_beats[A_BEATPOS][acc_iter]);
+
+					ref_tempo = acc_beats[A_TEMPO][acc_iter];
+
+					// average the last 3 diffs between Y and ACCO beats
+					minerr = 0;
+					int i = 0;
+					if (b_iter > 3)
+						i = b_iter - 3;
+					for (; i <= b_iter; i++) {
+						minerr += y_beats[1][b_iter];
+					}
+					minerr /= 3;
+				}
+				else
+					diff_acc = VERY_BIG;
+
+				prev_h_beat = h_real;
+				beat_due = true;
+			}
+			break;
+
+		case (BUF_ACCO): // looking at accompaniment
+			if (acc_iter) {
+				add_beat(acc_iter, beat->getCurrentTempoEstimate());
+			}
+			//post("tempo %f at beat %d", beat->getCurrentTempoEstimate(), acc_iter);
+			break;
+		}
+		return true; // beat, work done
+	}
+	return false; // no beat, did nothing
+}
+
+void TempoModel::incrementAccIter() {
+	acc_iter++;
+}
+
+float TempoModel::computeYAccbeatDiffs() {
+	// compare Y beats & ACC beats
+	b_iter = acc_iter = 0;
+	float diff = 0;
+	while (b_iter < y_beats[0].size() && acc_iter < acc_beats[A_BEATPOS].size()) {
+		b_iter = update_beat_iter(b_iter, &y_beats[0], int(acc_beats[A_BEATPOS][acc_iter]));
+		if (b_iter)
+			y_beats[1][b_iter] = calc_beat_diff(y_beats[Y_BEATPOS][b_iter],
+				y_beats[Y_BEATPOS][b_iter - 1], acc_beats[A_BEATPOS][acc_iter]);
+		else
+			y_beats[1][b_iter] = y_beats[Y_BEATPOS][b_iter] - acc_beats[A_BEATPOS][acc_iter];
+		diff = (float)(y_beats[Y_DIFF][b_iter] + acc_iter * diff) / (acc_iter + 1); // CMA
+		acc_iter++;
+	}
+	b_stdev = minerr = 0;
+	for (int i = 0; i < b_iter; i++)
+		b_stdev += (diff - y_beats[Y_DIFF][i]) * (diff - y_beats[Y_DIFF][i]);
+	b_stdev /= y_beats[Y_BEATPOS].size();
+	b_stdev = sqrt(b_stdev);
+	//post("std deviation between Y and ACC beats: %f", b_stdev);
 }
 
 // ====== internal methods ==========
@@ -63,7 +172,7 @@ double TempoModel::calc_tempo(int mode) {
     unsigned int h = warp->getH();
     
     int second = 86; // number of frames per second (44100/512)
-    vector<vector<double> > b_err = warp->getBackPath();
+    b_err = warp->getBackPath();
     unsigned int bsize = warp->getBsize();
     unsigned int b_start = t % bsize;
     int step = bsize / 40;
@@ -149,10 +258,10 @@ double TempoModel::calc_tempo(int mode) {
                             float derr_i = 0;    // v_t1
                             float derr_q = 0;    // v_t2
                             for (int it = 0; it < step; it++) { // summing tempo deviations
-                                derr_i += abs(b_err[(i+it - step + bsize) %bsize][3] -
-                                              b_err[(i+it+1-step + bsize) %bsize][3]);
-                                derr_q += abs(b_err[(Deque.front() - it+bsize)%bsize][3] -
-                                              b_err[(Deque.front()-1-it+bsize)%bsize][3]);
+                                derr_i += abs(b_err[(i+it - step + bsize) %bsize][B_TEMPO] -
+                                              b_err[(i+it+1-step + bsize) %bsize][B_TEMPO]);
+                                derr_q += abs(b_err[(Deque.front() - it+bsize)%bsize][B_TEMPO] -
+                                              b_err[(Deque.front()-1-it+bsize)%bsize][B_TEMPO]);
                             }
                             while (!Deque.empty() && derr_i < derr_q) {
                                 Deque.pop_front();
@@ -166,10 +275,10 @@ double TempoModel::calc_tempo(int mode) {
                         float derr_ipK = 0;
                         float derr_q = 0;
                         for (int it = 0; it < step; it++) { // summing tempo deviations
-                            derr_ipK += abs(b_err[(iplusK- it  + bsize)%bsize][3] -
-                                            b_err[(iplusK-it-i + bsize)%bsize][3]);
-                            derr_q   +=    abs(b_err[(Deque.front()- it  + bsize)%bsize][3] -
-                                               b_err[(Deque.front()-it-1 +    bsize)%bsize][3]);
+                            derr_ipK += abs(b_err[(iplusK- it  + bsize)%bsize][B_TEMPO] -
+                                            b_err[(iplusK-it-i + bsize)%bsize][B_TEMPO]);
+                            derr_q   +=    abs(b_err[(Deque.front()- it  + bsize)%bsize][B_TEMPO] -
+                                               b_err[(Deque.front()-it-1 +    bsize)%bsize][B_TEMPO]);
                         }
                         Sum = derr_q + derr_ipK;
                         //                        post("Sum is %f, Min is %f", Sum, Min);
@@ -178,21 +287,21 @@ double TempoModel::calc_tempo(int mode) {
                                 // if found new Min
                                 counter = 0;
                                 Min = Sum;
-                                pivot1_t = b_err[Deque.front()][1];
-                                pivot1_h = b_err[Deque.front()][2];
-                                pivot1_tp = b_err[Deque.front()][3];
-                                pivot2_t = b_err[iplusK][1];
-                                pivot2_h = b_err[iplusK][2];
-                                pivot2_tp = b_err[iplusK][3];
+                                pivot1_t = b_err[Deque.front()][B_T];
+                                pivot1_h = b_err[Deque.front()][B_H];
+                                pivot1_tp = b_err[Deque.front()][B_TEMPO];
+                                pivot2_t = b_err[iplusK][B_T];
+                                pivot2_h = b_err[iplusK][B_H];
+                                pivot2_tp = b_err[iplusK][B_TEMPO];
                                 got_new_tempo = true;
                             } else {
                                 if (pivot1_t) counter++;
-                                pivot1_t = (b_err[Deque.front()][1] + counter * pivot1_t) / (counter + 1); // CMA
-                                pivot1_h = (b_err[Deque.front()][2] + counter * pivot1_h) / (counter + 1); // CMA
-                                pivot1_tp = (b_err[Deque.front()][3] + counter * pivot1_tp) / (counter + 1); // CMA
-                                pivot2_t = (b_err[iplusK][1] + counter * pivot2_t) / (counter + 1); // CMA
-                                pivot2_h = (b_err[iplusK][2] + counter * pivot2_h) / (counter + 1); // CMA
-                                pivot2_tp = (b_err[iplusK][3] + counter * pivot2_tp) / (counter + 1); // CMA
+                                pivot1_t = (b_err[Deque.front()][B_T] + counter * pivot1_t) / (counter + 1); // CMA
+                                pivot1_h = (b_err[Deque.front()][B_H] + counter * pivot1_h) / (counter + 1); // CMA
+                                pivot1_tp = (b_err[Deque.front()][B_TEMPO] + counter * pivot1_tp) / (counter + 1); // CMA
+                                pivot2_t = (b_err[iplusK][B_T] + counter * pivot2_t) / (counter + 1); // CMA
+                                pivot2_h = (b_err[iplusK][B_H] + counter * pivot2_h) / (counter + 1); // CMA
+                                pivot2_tp = (b_err[iplusK][B_TEMPO] + counter * pivot2_tp) / (counter + 1); // CMA
                                 got_new_tempo = true;
                             }
                         }
@@ -223,14 +332,14 @@ double TempoModel::calc_tempo(int mode) {
                 int i = (b_start-step+bsize)%bsize, j = 0;
                 float derr_i = 0;
                 for (int it = 0; it < step; it++) { // summing tempo deviations
-                    derr_i += abs(b_err[(i+it - step + bsize) %bsize][3] -
-                                  b_err[(i+it+1-step + bsize) %bsize][3]);
+                    derr_i += abs(b_err[(i+it - step + bsize) %bsize][B_TEMPO] -
+                                  b_err[(i+it+1-step + bsize) %bsize][B_TEMPO]);
                 }
                 while (j < 2*K && b_err[i][1] > t_passed + 4) {
                     if(derr_i == 0) {
                         got_new_tempo = true;
-                        t_passed = b_err[i][1];
-                        last_arzt = b_err[i][3];
+                        t_passed = b_err[i][B_T];
+                        last_arzt = b_err[i][B_TEMPO];
                         if (2*K - j > 8) { // spread them out
                             j += 4;
                             i = (i-4+bsize)%bsize;
@@ -271,4 +380,85 @@ double TempoModel::calc_tempo(int mode) {
     }
     beat_due = false;
     return new_tempo;
+}
+
+void TempoModel::beat_switch() {
+	unsigned int t = warp->getT();
+	unsigned int h = warp->getH();
+	error = (h - h_real);
+
+	double beat_tempo = calc_beat_tempo();
+	int beat_length = (acc_iter) ? acc_beats[A_BEATPOS][acc_iter] - acc_beats[A_BEATPOS][acc_iter - 1] : fsize;
+
+	static int waiting = 0;
+	unsigned int bsize = warp->getBsize();
+	int step = bsize / 8;
+	unsigned int b_start = t % bsize;
+
+	// sensitivity to tempo fluctuations:
+	if (abs(error) > pow(1.f - sensitivity, 2)*100.f + abs(minerr)) {
+		if (abs(b_err[b_start][B_ERROR]) > 15 && abs(tempo_avg - beat_tempo) > 0.15 && beat_due) {
+			// DTW is way off, beat tracker takes over
+			//			post("oDTW is off, BT on! %f != %f. beat length = %d", tempo_avg, beat_tempo, beat_length);
+			waiting = beat_length;
+		}
+		if (waiting) {
+			tempo = beat_tempo;
+			tempo_mode = BEAT;
+		}
+		else {
+			// done, move back from BEAT tracker to oDTW tracker
+			if (tempo_mode == BEAT) {
+				h_real = h;
+				//				h_real += tempo;
+				//if (DEBUG) post("moved H_real to H");
+			}
+			tempo = calc_tempo(tempo_model);
+			tempo_mode = DTW;
+		}
+	}
+	else if (abs(error) <= 1 && tempo_mode && t > step) {
+		//        post("disengage");
+		tempo = b_err[(b_start - step + bsize) % bsize][B_TEMPO];
+		tempo_mode = OFF;
+	}
+
+	if (waiting > 0) waiting--;
+
+	if (tempo > 0.01) {
+		if (tempo > 3 || tempo < 0.33) {
+			//if (DEBUG) post("OUT OF CONTROL tempo = %f, mode %d", tempo, tempo_mode);
+			tempo = beat_tempo;
+			tempo_mode = BEAT;
+			waiting = (int)(fsize / beat_length) * beat_length;
+		}
+		h_real += tempo;
+	}
+}
+
+int TempoModel::calc_beat_diff(double cur_beat, double prev_beat, double ref_beat) {
+	// helper: returns # of frames between current live beat and its corresponding reference/score beat
+	int newdiff = cur_beat - ref_beat;
+	if (abs(newdiff) > (cur_beat - prev_beat) / 4) { // reverse phase
+		if (cur_beat < ref_beat)
+			newdiff = cur_beat + (cur_beat - prev_beat) / 2 - ref_beat;
+		else
+			newdiff = cur_beat - (cur_beat - prev_beat) / 2 - ref_beat;
+	}
+	return newdiff;
+}
+
+unsigned int TempoModel::update_beat_iter(unsigned int beat_index, vector<float> *beat_vector, double ref_beat) {
+	// helper: finds closest beat index to the "ref_beat" coordinate
+	if (beat_index < beat_vector->size() - 1) {
+		// while the next beat is closer than the current one, increment iterator
+		while ((beat_index < beat_vector->size() - 1) &&
+			abs(ref_beat - beat_vector->at(beat_index)) > abs(ref_beat - beat_vector->at(beat_index + 1)))
+			beat_index++;
+	}
+	return beat_index;
+}
+
+double TempoModel::calc_beat_tempo() {
+	return (beat->getCurrentTempoEstimate() / ref_tempo);
 }

@@ -84,20 +84,20 @@
     <LinkIncremental>true</LinkIncremental>
     <TargetExt>.mxe</TargetExt>
     <OutDir>$(C74SUPPORT)..\sdk-build\</OutDir>
-    <IncludePath>$(ProjectDir)\fftw\32;$(ProjectDir)\Chord-Detector-and-Chromagram\src;$(ProjectDir);$(ProjectDir)\BTrack\src;$(ProjectDir)\libsamplerate\src;$(ProjectDir)\oDTW\;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)\fftw\32;$(ProjectDir)\Chord-Detector-and-Chromagram\src;$(ProjectDir);$(ProjectDir)\BTrack\src;$(ProjectDir)\libsamplerate\src;$(ProjectDir)\oDTW\;$(ProjectDir)\tempo\;$(IncludePath)</IncludePath>
     <LibraryPath>$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
     <TargetExt>.mxe64</TargetExt>
     <OutDir>$(C74SUPPORT)..\sdk-build\</OutDir>
-    <IncludePath>$(ProjectDir)\fftw\64;$(ProjectDir)\Chord-Detector-and-Chromagram\src;$(ProjectDir);$(ProjectDir)\BTrack\src;$(ProjectDir)\libsamplerate\src;$(ProjectDir)\oDTW\;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)\fftw\64;$(ProjectDir)\Chord-Detector-and-Chromagram\src;$(ProjectDir);$(ProjectDir)\BTrack\src;$(ProjectDir)\libsamplerate\src;$(ProjectDir)\oDTW\;$(ProjectDir)\tempo\;$(IncludePath)</IncludePath>
     <LibraryPath>$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <TargetExt>.mxe</TargetExt>
-    <IncludePath>$(ProjectDir)\fftw\32;$(ProjectDir)\Chord-Detector-and-Chromagram\src;$(ProjectDir);$(ProjectDir)\BTrack\src;$(ProjectDir)\libsamplerate\src;$(ProjectDir)\oDTW\;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)\fftw\32;$(ProjectDir)\Chord-Detector-and-Chromagram\src;$(ProjectDir);$(ProjectDir)\BTrack\src;$(ProjectDir)\libsamplerate\src;$(ProjectDir)\oDTW\;$(ProjectDir)\tempo\;$(IncludePath)</IncludePath>
     <OutDir>$(C74SUPPORT)..\..\externals\</OutDir>
     <SourcePath>$(VCInstallDir)atlmfc\src\mfc;$(VCInstallDir)atlmfc\src\mfcm;$(VCInstallDir)atlmfc\src\atl;$(VCInstallDir)crt\src</SourcePath>
   </PropertyGroup>
@@ -105,7 +105,8 @@
     <LinkIncremental>false</LinkIncremental>
     <TargetExt>.mxe64</TargetExt>
     <OutDir>$(C74SUPPORT)..\..\externals\</OutDir>
-    <IncludePath>$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSdkDir)include;$(FrameworkSDKDir)\include;</IncludePath>
+        <IncludePath>$(ProjectDir)\fftw\64;$(ProjectDir)\Chord-Detector-and-Chromagram\src;$(ProjectDir);$(ProjectDir)\BTrack\src;$(ProjectDir)\libsamplerate\src;$(ProjectDir)\oDTW\;$(ProjectDir)\tempo\;$(IncludePath)</IncludePath>
+    <SourcePath>$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSdkDir)include;$(FrameworkSDKDir)\include;</SourcePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -296,12 +297,14 @@
     <ClCompile Include="oDTW\oDTW.cpp" />
     <ClCompile Include="rvdtw~.cpp" />
     <ClCompile Include="ted\ted.cpp" />
+    <ClCompile Include="tempo\smc16tempo.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="defines.h" />
     <ClInclude Include="oDTW\oDTW.h" />
     <ClInclude Include="rvdtw~.h" />
     <ClInclude Include="ted\ted.h" />
+    <ClInclude Include="tempo\tempo.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ted\README.md" />

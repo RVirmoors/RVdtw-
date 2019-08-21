@@ -33,6 +33,9 @@
     <ClCompile Include="ted\ted.cpp">
       <Filter>ted</Filter>
     </ClCompile>
+    <ClCompile Include="tempo\smc16tempo.cpp">
+      <Filter>tempo</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="defines.h" />
@@ -42,6 +45,9 @@
     </ClInclude>
     <ClInclude Include="ted\ted.h">
       <Filter>ted</Filter>
+    </ClInclude>
+    <ClInclude Include="tempo\tempo.h">
+      <Filter>tempo</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -59,6 +65,9 @@
     </Filter>
     <Filter Include="ted">
       <UniqueIdentifier>{1eea9ad0-4f48-4ef7-b1dc-996848c0adf9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="tempo">
+      <UniqueIdentifier>{4238a0f4-61f4-4041-b89f-6891f3c62b33}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

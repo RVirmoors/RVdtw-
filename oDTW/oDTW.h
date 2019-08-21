@@ -93,7 +93,7 @@ public:
 	// get current live time T (in frames)
 	unsigned int getT();
 
-	// get current reference time H
+	// get current reference time H (frames)
 	unsigned int getH();
     
     // set new reference time. Use with caution - causes the system to effectively jump in time!

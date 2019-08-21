@@ -40,7 +40,6 @@ Version history:
 #include <fftw3.h>
 #endif
 #include "chromagram.h"
-#include "BTrack.h"
 #include "oDTW.h"
 #include "tempo.h"
 
@@ -131,13 +130,12 @@ public:
 	// internal vars:
 	long ysize;
     t_uint16 iter;
-	double h_real;
 	vector<vector<double> > b_err;
 	t_uint16 b_start, bh_start, bsize;
     bool follow;
     unsigned int fsize;
     
-    t_uint16 input_sel;
+    short input_sel;
     t_atom dump[50];
 
     unsigned int params;    // number of params in feature vectors
@@ -171,7 +169,6 @@ public:
 	fftw_complex *out;
     fftw_plan plan, dct;
 #endif
-	BTrack *beat;
 	Chromagram *chroma;
 	vector<double> chr;
     oDTW *warp;
@@ -199,7 +196,7 @@ public:
 	Raskell();
 	~Raskell();
 	void init(t_symbol *s,  long argc, t_atom *argv);
-	void perform(double *in, long sampleframes, int dest);
+	void perform(double *in, long sampleframes, short dest);
 
 	// inlet methods:
 	void feats(t_uint16 argc);
