@@ -54,11 +54,20 @@ public:
 	// get tempo mode (OFF / oDTW / BEAT)
 	short getTempoMode();
 
+	// add an y / acco beat to a specific frame pos
+	void addBeat(unsigned int pos, double tempo, short dest);
+
 	// get total number of acco beats
 	unsigned int getAccBeats();
 
 	// get total number of Y reference beats
 	unsigned int getYBeats();
+
+	// reset y_beats array
+	void clearYBeats();
+
+	// return tempo if beat #beat_index found at position pos, or zero if not
+	double beatAt(unsigned int pos, unsigned int beat_index, short dest);
 
 	// perform beat tracking. Returns TRUE if beat in current *in frame, FALSE otherwise
 	// in: (audio) input frame
@@ -71,6 +80,8 @@ public:
 
 	// compute frame differences between Y and Acco. Returns overall average diff.
 	float computeYAccbeatDiffs();
+
+	void computeTempo();
     
 private:
 	// internal vars
@@ -105,12 +116,10 @@ private:
 	// internal methods
     double calc_tempo(int mode);
     
-    // beat methods
-    void beat_switch();
+    // internal beat methods
     int calc_beat_diff(double cur_beat, double prev_beat, double ref_beat);
     unsigned int update_beat_iter(unsigned int beat_index, vector<float> *beat_vector, double ref_beat);
     double calc_beat_tempo();
-    void add_beat(unsigned int pos, double tempo);
     short tempo_mode; // 0: insensitive, 1: DTW track, 2: beat track
 };
 

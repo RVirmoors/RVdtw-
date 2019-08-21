@@ -8,6 +8,10 @@
 
 // ========= RVDTW main ===============
 
+// FFT params
+#define WINDOW_SIZE 2048
+#define HOP_SIZE 512
+
 // input select:
 #define IN_SCORE 1
 #define IN_LIVE 2

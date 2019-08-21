@@ -44,11 +44,18 @@ void TempoModel::start() {
 	ref_tempo = 120;
 	integral = t_passed = last_arzt = 0;
 	tempos.clear(); errors.clear();
+	tempo_mode = OFF;
+	tempo_model = T_DEQ;
+
+	pivot1_t = pivot1_h = pivot2_t = pivot2_h = 0;
+	pivot1_tp = pivot2_tp = 1;
 
 	y_beats.clear();
 	y_beats.resize(2);
 	acc_beats.clear();
 	acc_beats.resize(2);
+
+	beat->updateHopAndFrameSize(HOP_SIZE, HOP_SIZE);
 }
 
 void TempoModel::setSensitivity(float sen) {
@@ -75,12 +82,38 @@ short TempoModel::getTempoMode() {
 	return tempo_mode;
 }
 
+void TempoModel::addBeat(unsigned int pos, double tempo, short dest) {
+	if (dest == BUF_ACCO) {
+		acc_beats[A_BEATPOS].push_back(pos);
+		acc_beats[A_TEMPO].push_back(tempo);
+	}
+	else if (dest == BUF_MAIN) {
+		y_beats[Y_BEATPOS].push_back(pos);  // beat pos
+		y_beats[Y_DIFF].push_back(0);	// diff from acco beat (computed later)
+	}
+}
+
 unsigned int TempoModel::getAccBeats() {
 	return acc_beats[A_BEATPOS].size();
 }
 
 unsigned int TempoModel::getYBeats() {
 	return y_beats[Y_BEATPOS].size();
+}
+
+void TempoModel::clearYBeats() {
+	y_beats.clear();
+	y_beats.resize(2);
+}
+
+double TempoModel::beatAt(unsigned int pos, unsigned int beat_index, short dest) {
+	if (dest == BUF_MAIN) {
+		if (y_beats[Y_BEATPOS][beat_index] == pos) return 1;
+	}
+	else if (dest == BUF_ACCO) {
+		if (acc_beats[A_BEATPOS][beat_index] == pos) return acc_beats[A_TEMPO][beat_index];
+	}
+	return 0;
 }
 
 bool TempoModel::performBeat(double *in, short source, short dest, unsigned int frame_index) {
@@ -127,7 +160,7 @@ bool TempoModel::performBeat(double *in, short source, short dest, unsigned int 
 
 		case (BUF_ACCO): // looking at accompaniment
 			if (acc_iter) {
-				add_beat(acc_iter, beat->getCurrentTempoEstimate());
+				addBeat(acc_iter, beat->getCurrentTempoEstimate(), BUF_ACCO);
 			}
 			//post("tempo %f at beat %d", beat->getCurrentTempoEstimate(), acc_iter);
 			break;
@@ -145,6 +178,7 @@ float TempoModel::computeYAccbeatDiffs() {
 	// compare Y beats & ACC beats
 	b_iter = acc_iter = 0;
 	float diff = 0;
+
 	while (b_iter < y_beats[0].size() && acc_iter < acc_beats[A_BEATPOS].size()) {
 		b_iter = update_beat_iter(b_iter, &y_beats[0], int(acc_beats[A_BEATPOS][acc_iter]));
 		if (b_iter)
@@ -155,12 +189,76 @@ float TempoModel::computeYAccbeatDiffs() {
 		diff = (float)(y_beats[Y_DIFF][b_iter] + acc_iter * diff) / (acc_iter + 1); // CMA
 		acc_iter++;
 	}
+
 	b_stdev = minerr = 0;
 	for (int i = 0; i < b_iter; i++)
 		b_stdev += (diff - y_beats[Y_DIFF][i]) * (diff - y_beats[Y_DIFF][i]);
 	b_stdev /= y_beats[Y_BEATPOS].size();
 	b_stdev = sqrt(b_stdev);
 	//post("std deviation between Y and ACC beats: %f", b_stdev);
+
+	// return mean diff between beats
+	return diff;
+}
+
+void TempoModel::computeTempo() {
+	unsigned int t = warp->getT();
+	unsigned int h = warp->getH();
+	error = (h - h_real);
+
+	double beat_tempo = calc_beat_tempo();
+	int beat_length = (acc_iter) ? acc_beats[A_BEATPOS][acc_iter] - acc_beats[A_BEATPOS][acc_iter - 1] : warp->getFsize();
+
+	static int waiting = 0;
+	unsigned int bsize = warp->getBsize();
+	int step = bsize / 8;
+	unsigned int b_start = t % bsize;
+
+	// sensitivity to tempo fluctuations:
+	if (abs(error) > pow(1.f - sensitivity, 2)*100.f + abs(minerr)) {
+		if (abs(b_err[b_start][B_ERROR]) > 15 && abs(tempo_avg - beat_tempo) > 0.15 && beat_due) {
+			// DTW is way off, beat tracker takes over
+			//			post("oDTW is off, BT on! %f != %f. beat length = %d", tempo_avg, beat_tempo, beat_length);
+			waiting = beat_length;
+		}
+		if (waiting) {
+			tempo = beat_tempo;
+			tempo_mode = BEAT;
+		}
+		else {
+			// done, move back from BEAT tracker to oDTW tracker
+			if (tempo_mode == BEAT) {
+				h_real = h;
+				//				h_real += tempo;
+				//if (DEBUG) post("moved H_real to H");
+			}
+			tempo = calc_tempo(tempo_model);
+			tempo_mode = DTW;
+		}
+	}
+	else if (abs(error) <= 1 && tempo_mode && t > step) {
+		//        post("disengage");
+		tempo = b_err[(b_start - step + bsize) % bsize][B_TEMPO];
+		tempo_mode = OFF;
+	}
+
+	if (waiting > 0) waiting--;
+
+	if (tempo > 0.01) {
+		if (tempo > 3 || tempo < 0.33) {
+			//if (DEBUG) post("OUT OF CONTROL tempo = %f, mode %d", tempo, tempo_mode);
+			tempo = beat_tempo;
+			tempo_mode = BEAT;
+			waiting = (int)(warp->getFsize() / beat_length) * beat_length;
+		}
+		h_real += tempo;
+	}
+
+	// compute smoothed beat-based tempo
+	if (t > step * 2) {
+		tempo_avg += b_err[(b_start - step + bsize) % bsize][B_TEMPO] / step;
+		tempo_avg -= b_err[(b_start - (step + 8) + bsize) % bsize][B_TEMPO] / step;
+	}
 }
 
 // ====== internal methods ==========
@@ -382,60 +480,6 @@ double TempoModel::calc_tempo(int mode) {
     return new_tempo;
 }
 
-void TempoModel::beat_switch() {
-	unsigned int t = warp->getT();
-	unsigned int h = warp->getH();
-	error = (h - h_real);
-
-	double beat_tempo = calc_beat_tempo();
-	int beat_length = (acc_iter) ? acc_beats[A_BEATPOS][acc_iter] - acc_beats[A_BEATPOS][acc_iter - 1] : fsize;
-
-	static int waiting = 0;
-	unsigned int bsize = warp->getBsize();
-	int step = bsize / 8;
-	unsigned int b_start = t % bsize;
-
-	// sensitivity to tempo fluctuations:
-	if (abs(error) > pow(1.f - sensitivity, 2)*100.f + abs(minerr)) {
-		if (abs(b_err[b_start][B_ERROR]) > 15 && abs(tempo_avg - beat_tempo) > 0.15 && beat_due) {
-			// DTW is way off, beat tracker takes over
-			//			post("oDTW is off, BT on! %f != %f. beat length = %d", tempo_avg, beat_tempo, beat_length);
-			waiting = beat_length;
-		}
-		if (waiting) {
-			tempo = beat_tempo;
-			tempo_mode = BEAT;
-		}
-		else {
-			// done, move back from BEAT tracker to oDTW tracker
-			if (tempo_mode == BEAT) {
-				h_real = h;
-				//				h_real += tempo;
-				//if (DEBUG) post("moved H_real to H");
-			}
-			tempo = calc_tempo(tempo_model);
-			tempo_mode = DTW;
-		}
-	}
-	else if (abs(error) <= 1 && tempo_mode && t > step) {
-		//        post("disengage");
-		tempo = b_err[(b_start - step + bsize) % bsize][B_TEMPO];
-		tempo_mode = OFF;
-	}
-
-	if (waiting > 0) waiting--;
-
-	if (tempo > 0.01) {
-		if (tempo > 3 || tempo < 0.33) {
-			//if (DEBUG) post("OUT OF CONTROL tempo = %f, mode %d", tempo, tempo_mode);
-			tempo = beat_tempo;
-			tempo_mode = BEAT;
-			waiting = (int)(fsize / beat_length) * beat_length;
-		}
-		h_real += tempo;
-	}
-}
-
 int TempoModel::calc_beat_diff(double cur_beat, double prev_beat, double ref_beat) {
 	// helper: returns # of frames between current live beat and its corresponding reference/score beat
 	int newdiff = cur_beat - ref_beat;
@@ -462,3 +506,4 @@ unsigned int TempoModel::update_beat_iter(unsigned int beat_index, vector<float>
 double TempoModel::calc_beat_tempo() {
 	return (beat->getCurrentTempoEstimate() / ref_tempo);
 }
+

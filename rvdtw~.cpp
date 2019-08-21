@@ -81,8 +81,8 @@ void *RVdtw_new(t_symbol *s, long argc, t_atom *argv) {
 }
 
 void RVdtw_free(t_RVdtw *x) {
-	delete x->rv->beat;
-	x->rv->beat = NULL;
+	delete x->rv->tempoModel;
+	x->rv->tempoModel = NULL;
 	delete x->rv->chroma;
 	x->rv->chroma = NULL;
 	
@@ -130,8 +130,8 @@ void RVdtw_scoresize(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv) {
 void RVdtw_beat(t_RVdtw *x, t_symbol *s, long argc, t_atom *argv) {
 	t_uint16 pos = atom_getlong(argv);
 	double tempo = atom_getfloat(argv+1);
-	x->rv->add_beat(pos, tempo);
-	if (DEBUG) post("beat at %d, tempo %.3f. total beats: %d", pos, tempo, x->rv->acc_beats[A_BEATPOS].size());
+	x->rv->tempoModel->addBeat(pos, tempo, BUF_ACCO);
+	if (DEBUG) post("beat at %d, tempo %.3f. total acco beats: %d", pos, tempo, x->rv->tempoModel->getAccBeats());
 }
 
 void RVdtw_read(t_RVdtw *x, t_symbol *s) {
@@ -141,10 +141,7 @@ void RVdtw_read(t_RVdtw *x, t_symbol *s) {
 }
 
 void RVdtw_readacco(t_RVdtw *x, t_symbol *s) {
-	x->rv->acc_beats.clear();
-	x->rv->acc_beats.resize(2);
-	x->rv->acc_iter = 0;	
-	x->rv->beat->updateHopAndFrameSize(HOP_SIZE, HOP_SIZE);
+	x->rv->tempoModel->start();
 	atom v[1];
 	atom_setlong(v, BUF_ACCO),
 	defer_low(x,(method)RVdtw_do_read,s,1,v);
@@ -250,7 +247,7 @@ t_max_err RVdtw_notify(t_RVdtw *x, t_symbol *s, t_symbol *msg, void *sender, voi
 void RVdtw_dsp(t_RVdtw *x, t_signal **sp, short *count)
 {
 	//post("my sample rate is: %f", sp[0]->s_sr);
-	x->rv->beat->updateHopAndFrameSize(sp[0]->s_n, sp[0]->s_n);
+	//x->rv->beat->updateHopAndFrameSize(sp[0]->s_n, sp[0]->s_n);
 	dsp_add(RVdtw_perform, 3, x, sp[0]->s_vec, sp[0]->s_n); // ins & sampleframes
 }
 
@@ -323,7 +320,6 @@ Raskell::Raskell() {
 		score_name = live_name = "";
 		
 		features = CHROMA;
-		tempo_model = T_DEQ;
         params = m = 12;
 //		tfeat = malloc(m * sizeof(double));
     
@@ -393,7 +389,7 @@ bool Raskell::zeros(double *in, long sampleframes) {
 void Raskell::perform(double *in, long sampleframes, short dest) {
 
 	// ==== BEAT TRACKING
-	if (tempoModel->performBeat(in, input_sel, dest))
+	if (tempoModel->performBeat(in, input_sel, dest, iter))
 		outlet_bang(max->out_beats);	// bang on input beat
 
 	// output minerr
@@ -492,18 +488,10 @@ void Raskell::feats(t_uint16 argc) {
 
                 atom_setsym(dump, gensym("b_err"));
                 atom_setlong(dump+1, b_err[b_start][B_ERROR]);
-                atom_setfloat(dump+2, tempo_avg);
-                outlet_list(max->out_dump, 0L, 3, dump);
-
-                int step = bsize / 8;
+                outlet_list(max->out_dump, 0L, 2, dump);
                 
-                if (t > step * 2) {
-                    tempo_avg += b_err[(b_start- step   +bsize)%bsize][B_TEMPO] / step;
-                    tempo_avg -= b_err[(b_start-(step+8)+bsize)%bsize][B_TEMPO] / step;
-                }
-                
-                // choose tempo model: oDTW-based or beat-based
-                tempoModel->beat_switch();
+                // get tempo based on tempo model
+                tempoModel->computeTempo();
 				outlet_float(max->out_tempo, tempoModel->getTempo());
 
 				// output real H
@@ -532,8 +520,7 @@ void Raskell::feats(t_uint16 argc) {
 void Raskell::score_size(long v) {
 	if ((ysize = warp->setScoreSize(v))) {
 		post("Score Matrix memory alloc'd, size %i * %i", ysize, params);
-        y_beats.clear();
-        y_beats.resize(2);
+		tempoModel->clearYBeats();
 	}
 	else post("wrong/missing length");
 }
@@ -554,17 +541,8 @@ void Raskell::reset() {
 	tempoModel->start();
 
     iter = 0;
-    tempo = tempo_avg = 1;
-    tempotempo = 0;
-	integral = t_passed = last_arzt = 0;	
-	tempos.clear(); errors.clear();
-	acc_iter = b_iter = prev_h_beat = 0;
-	tempo_mode = OFF;
 
 	reset_feat();
-
-	pivot1_t = pivot1_h = pivot2_t = pivot2_h = 0;
-	pivot1_tp = pivot2_tp = 1;
     
     outlet_int(max->out_t, 0);
     outlet_int(max->out_h, 0);
@@ -598,11 +576,10 @@ void Raskell::input(long v) {
 	if (input_sel == IN_LIVE) {
 		//markers[m_count][0] = ysize-fsize; // add END marker
         warp->start();
+		tempoModel->start();
 		iter = 0;
-		b_iter = 0;
-		acc_iter = 0;
 	}
-	if (ref_tempo)	beat->setTempo(ref_tempo);
+	//if (ref_tempo)	beat->setTempo(ref_tempo);
 	//post ("reference tempo set at %.2f BPM", ref_tempo);
 }
 
@@ -689,8 +666,7 @@ void Raskell::fillBanks() {
 				banks[i-1].push_back(0);
 			}
 		}
-	}
-	
+	}	
 	delete cf;
 }
 
@@ -712,8 +688,6 @@ void Raskell::add_sample_to_frames(double sample) {
 }
 
 void Raskell::reset_feat() {
-	beat->updateHopAndFrameSize(dsp_vector_size, dsp_vector_size);
-
 	frame.clear();
 	frame.resize(active_frames);
 	for (int i=0; i<active_frames; i++)
@@ -770,17 +744,6 @@ double Raskell::compress(double value, bool active) {
 	return value;
 }
 
-// ========================= TEMPO ============================
-
-
-
-
-void Raskell::add_beat(t_uint16 pos, double tempo) {
-	acc_beats[A_BEATPOS].push_back(pos);
-	acc_beats[A_TEMPO].push_back(tempo);
-}
-
-
 
 // ========================= FILE i/o =================
 bool Raskell::do_read(t_symbol *s) {
@@ -824,8 +787,7 @@ void Raskell::file_open(char *name) {
 			f_size = size;
 
 			if(input_sel != IN_LIVE) {			
-				acc_beats.clear();
-				acc_beats.resize(2);
+				tempoModel->start();
 				score_name = name;
 				// start reading SCORE frames				
 				// count # of framess:
@@ -883,20 +845,17 @@ bool Raskell::read_line() {
 		if(strstr(buf, "marker"))//-buf==0) // marker
 			marker(NULL);
 		if(strstr(buf, " beat")) {
-			y_beats[0].push_back(iter);  // beat pos
-			y_beats[1].push_back(0);	// diff from acco beat (computed below in feats())
+			tempoModel->addBeat(iter, 0, BUF_MAIN);
 			//post("new Y beat at %d", iter);
 		}
 		char* beat_temp = strstr(buf, "accobeat");
 		if(beat_temp) {
-			acc_beats[A_BEATPOS].push_back(iter);  // beat pos
 			double temp;
 			sscanf(beat_temp, "accobeat %lf", &temp);
-			acc_beats[A_TEMPO].push_back(temp);  // tempo
+			tempoModel->addBeat(iter, temp, BUF_ACCO);
 			//post("new ACC beat at %d tempo %lf", iter, temp);
 		}
 		feats(params); 
-
 	}
 	return false;
 }
@@ -957,19 +916,20 @@ void Raskell::do_write(t_symbol *s) {
 		}
 	} else if (input_sel != IN_LIVE) { // in SCORE mode, save the score
 		strcpy(filename, "score.txt");
-		b_iter = acc_iter = 0;
+		float b_i, a_i;
+		b_i = a_i = 0;
 		for (i = 0; i < ysize; i++) {
 			buf += to_string(i) + ",";
 			for (j = 0; j < params; j++) {
 				buf += " " + to_string((long double)(warp->getY(i,j)));
 			}
-			if (y_beats[0].size() && i == y_beats[0][b_iter]) {
+			if (tempoModel->getYBeats() && tempoModel->beatAt(i, b_i, BUF_MAIN)) {
 				buf += " beat";
-				b_iter++;
+				b_i++;
 			}
-			if (acc_beats[A_BEATPOS].size() && i == acc_beats[A_BEATPOS][acc_iter]) {
-				buf += " accobeat " + to_string((long long)acc_beats[A_TEMPO][acc_iter]);
-				acc_iter++;
+			if (tempoModel->getAccBeats() && tempoModel->beatAt(i, a_i, BUF_ACCO)) {
+				buf += " accobeat " + to_string((long long)tempoModel->beatAt(i, a_i, BUF_ACCO));
+				a_i++;
 			}
 			buf += ";\n";
 		}
@@ -1057,14 +1017,14 @@ void Raskell::set_buffer(t_symbol *s, int dest) {
 		if (sample) {
 			double samp[HOP_SIZE];
 			long framesread = 0;
-			beat->updateHopAndFrameSize(HOP_SIZE, HOP_SIZE);
+			//beat->updateHopAndFrameSize(HOP_SIZE, HOP_SIZE);
 			for (long i = 0; i < frames-HOP_SIZE; i += HOP_SIZE) {			
 				std::copy(sample+i, sample+i+HOP_SIZE, samp); // convert float to double
 				//post("sample[%d] %f , double %f", i, sample[i], samp[0]);
 				perform(samp, HOP_SIZE, dest);
 				framesread ++;
 			}
-			post("Done reading buffer. %d frames. %d ACC beats. %d Y beats.", framesread, acc_beats[A_BEATPOS].size(), y_beats[0].size());
+			post("Done reading buffer. %d frames. %d ACC beats. %d Y beats.", framesread, tempoModel->getAccBeats(), tempoModel->getYBeats());
 		}
 		buffer_unlocksamples(b);
 	}

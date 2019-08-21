@@ -27,6 +27,7 @@ Version history:
 
 */
 
+// TO DO: set ref_tempo (beat tracker) before playing?
 // TO DO: linear interpolation of SEN between beats ? -> elast_beat
 
 #include "ext.h"			// standard Max include, always required (except in Jitter)
@@ -53,10 +54,6 @@ Version history:
 #include <deque>
 #include <sstream>
 
-
-// FFT params
-#define WINDOW_SIZE 2048
-#define HOP_SIZE 512
 
 // compression params (MFCC processing)
 #define COMP_THRESH -140
