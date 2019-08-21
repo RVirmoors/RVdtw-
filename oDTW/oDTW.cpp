@@ -216,6 +216,10 @@ unsigned int oDTW::getFsize() {
     return fsize;
 }
 
+unsigned int oDTW::getBsize() {
+    return bsize;
+}
+
 vector<vector<double> > oDTW::getBackPath() {
     return b_err;
 }

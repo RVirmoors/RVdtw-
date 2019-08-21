@@ -64,10 +64,6 @@ Version history:
 #define COMP_RELEASE 2
 #define COMP_RATIO 8
 
-// tempo tracking params
-#define SEN 1 // 0.9 // 0.98//1
-#define ELA 1 // 1
-
 
 using namespace std;
 
@@ -180,7 +176,7 @@ public:
 	vector<double> chr;
     oDTW *warp;
     TempoModel *tempoModel;
-
+/*
 	//		beat tracking vars:
 	vector<vector<float> > acc_beats; // acc_beats[0][]: beats, acc_beats[1][]: tempo
 	vector<vector<float> > y_beats; // y_beats[0][]: beats, y_beats[1][]: diffs to acco
@@ -190,7 +186,7 @@ public:
 	float elast_beat; // elasticity modulation by beat accuracy
 	bool beat_due;
 	double ref_tempo;
-
+*/
 	//		file handling vars:
 	t_filehandle f_fh;			
 	short f_open;			/* spool flag */
@@ -228,7 +224,7 @@ public:
 
 	// tempo model methods:
 //	double calc_tempo(int mode);
-
+/*
 	// beat methods:
     void beat_switch();
 	int calc_beat_diff(double cur_beat, double prev_beat, double ref_beat);
@@ -236,7 +232,7 @@ public:
 	double calc_beat_tempo();
 	void add_beat(t_uint16 pos, double tempo);
 	short tempo_mode; // 0: insensitive, 1: DTW track, 2: beat track
-
+*/
 	// file input / output methods:
 	bool do_read(t_symbol *s);
 	void file_open(char *name);

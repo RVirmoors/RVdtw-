@@ -108,6 +108,9 @@ public:
     // get oDTW window size
     unsigned int getFsize();
     
+    // get backwards window size
+    unsigned int getBsize();
+    
     // get backwards path vector[4]: error, t, h, local tempo
     vector<vector<double> > getBackPath();
     
