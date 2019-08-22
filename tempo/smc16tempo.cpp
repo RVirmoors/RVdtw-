@@ -43,6 +43,7 @@ void TempoModel::start() {
 	acc_iter = b_iter = prev_h_beat = 0;
 	ref_tempo = 120;
 	integral = t_passed = last_arzt = 0;
+	minerr = 0;
 	tempos.clear(); errors.clear();
 	tempo_mode = OFF;
 	tempo_model = T_DEQ;
@@ -213,6 +214,7 @@ void TempoModel::computeTempo() {
 	unsigned int bsize = warp->getBsize();
 	int step = bsize / 8;
 	unsigned int b_start = t % bsize;
+	b_err = warp->getBackPath();
 
 	// sensitivity to tempo fluctuations:
 	if (abs(error) > pow(1.f - sensitivity, 2)*100.f + abs(minerr)) {
@@ -244,6 +246,7 @@ void TempoModel::computeTempo() {
 
 	if (waiting > 0) waiting--;
 
+	// update h_real
 	if (tempo > 0.01) {
 		if (tempo > 3 || tempo < 0.33) {
 			//if (DEBUG) post("OUT OF CONTROL tempo = %f, mode %d", tempo, tempo_mode);

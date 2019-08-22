@@ -27,6 +27,7 @@ Version history:
 
 */
 
+// TO DO: port DSP stuff to Essentia?
 // TO DO: set ref_tempo (beat tracker) before playing?
 // TO DO: linear interpolation of SEN between beats ? -> elast_beat
 

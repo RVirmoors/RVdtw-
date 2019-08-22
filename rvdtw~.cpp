@@ -497,7 +497,7 @@ void Raskell::feats(t_uint16 argc) {
 				// output real H
 				double h_real = tempoModel->getHreal();
 				if (h_real > 8 && !(t % 9)) {
-					if (DEBUG) post("h %d hreal %f tempo %f", h, h_real, tempoModel->getTempo());
+					if (DEBUG) post("h %d hreal %f tempo %f mode %d", h, h_real, tempoModel->getTempo(), tempoModel->getTempoMode());
 					atom_setsym(dump, gensym("h_real"));
 					atom_setfloat(dump + 1, h_real);
 					// output real H (scaled)
