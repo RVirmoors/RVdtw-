@@ -139,21 +139,6 @@ public:
     unsigned int params;    // number of params in feature vectors
 	unsigned int features;  // MFCCs or chroma vectors
 
-    //      tempo model vars:
-/*	deque<t_uint16> Deque;
-	double tempo, tempotempo, tempo_avg;
-	int tempo_model;
-	double pivot1_t, pivot1_h, pivot1_tp, pivot2_t, pivot2_h, pivot2_tp;
-	float integral; // for PID model		
-	deque<double> errors;
-	deque<double> tempos; // for DEQ_ARZT model
-	int t_passed;
-	double last_arzt;
-	float sensitivity; // tempo fluctuations
-	float elasticity; // tempo response amp.
-	float error; // tempo tracking error vs DTW path / beats
-*/
-
 	//		DSP vars:
 	long dsp_vector_size; 
 	t_uint16 active_frames;
@@ -171,17 +156,7 @@ public:
 	vector<double> chr;
     oDTW *warp;
     TempoModel *tempoModel;
-/*
-	//		beat tracking vars:
-	vector<vector<float> > acc_beats; // acc_beats[0][]: beats, acc_beats[1][]: tempo
-	vector<vector<float> > y_beats; // y_beats[0][]: beats, y_beats[1][]: diffs to acco
-	t_uint16 acc_iter, b_iter;
-	double prev_h_beat;
-	float b_stdev, minerr;
-	float elast_beat; // elasticity modulation by beat accuracy
-	bool beat_due;
-	double ref_tempo;
-*/
+
 	//		file handling vars:
 	t_filehandle f_fh;			
 	short f_open;			/* spool flag */

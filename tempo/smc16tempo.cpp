@@ -46,7 +46,7 @@ void TempoModel::start() {
 	minerr = 0;
 	tempos.clear(); errors.clear();
 	tempo_mode = OFF;
-	tempo_model = T_DEQ;
+	tempo_model = T_PID;
 
 	pivot1_t = pivot1_h = pivot2_t = pivot2_h = 0;
 	pivot1_tp = pivot2_tp = 1;
