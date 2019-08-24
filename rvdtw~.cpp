@@ -487,8 +487,9 @@ void Raskell::feats(t_uint16 argc) {
                 b_start = t % bsize;
 
                 atom_setsym(dump, gensym("b_err"));
-                atom_setlong(dump+1, b_err[b_start][B_ERROR]);
-                outlet_list(max->out_dump, 0L, 2, dump);
+				atom_setlong(dump + 1, b_err[b_start][B_ERROR]);
+				atom_setlong(dump + 2, warp->getRunCount());
+                outlet_list(max->out_dump, 0L, 3, dump);
                 
                 // get tempo based on tempo model
                 tempoModel->computeTempo();

@@ -99,6 +99,9 @@ public:
     // set new reference time. Use with caution - causes the system to effectively jump in time!
     void setH(unsigned int to_h);
 
+	// get runCount value, how many frames have we been stopping / jumping
+	unsigned int getRunCount();
+
 	// get historic H value
 	unsigned int getHistory(unsigned int from_t);
     

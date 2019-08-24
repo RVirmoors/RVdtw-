@@ -204,6 +204,10 @@ void oDTW::setH(unsigned int to_h) {
     h_mod = h % fsize;
 }
 
+unsigned int oDTW::getRunCount() {
+	return runCount;
+}
+
 unsigned int oDTW::getHistory(unsigned int from_t) {
     return history[from_t];
 }
@@ -540,8 +544,7 @@ void oDTW::dtw_back() {
 					b_t--; b_h--;
 				}
 			}
-        
-			b_err[b_start][B_ERROR] = history[b_t] - b_h;
+			b_err[b_start][B_ERROR] = (int)history[b_t] - (int)b_h;
 
         
 			if (b_err[b_start][B_ERROR] > 5) { // gotta go DOWN
