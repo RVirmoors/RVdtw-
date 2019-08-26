@@ -472,7 +472,12 @@ bool oDTW::decrease_h() {
 void oDTW::dtw_back() {
     b_start = t % bsize;
     bh_start = h % bsize;
-	short B = 8;	// look back every B frames
+	short B;	// look back every B frames
+#ifdef TED
+    B = 1;
+#else
+    B = 8;
+#endif
 	int step = bsize / 8;	// compute local tempo over step*2 frames
     
     b_err[b_start][B_ERROR] = 0.f; // error; to be computed after t > bsize, below
@@ -488,12 +493,13 @@ void oDTW::dtw_back() {
 #endif
 */    
     if (t >= bsize && h >= bsize) { // now that b_dtw[][] is full:
-
+#ifndef TED
 		if (t % B) { // if not looking back, then error&tempo remain the same
 			b_err[b_start][B_ERROR]					   = b_err[(b_start-1+bsize)%bsize][B_ERROR];
 			b_err[(b_start-step+bsize)%bsize][B_TEMPO] = b_err[(b_start-step-1+bsize)%bsize][B_TEMPO];
 		}
 		else { // every B frames, let's look back:
+#endif
 			double top, mid, bot, cheapest;
 			unsigned int i, j;
 			b_dtw[b_start][bh_start] = Dist[b_start][bh_start]; // starting point
@@ -562,6 +568,8 @@ void oDTW::dtw_back() {
 				b_err[(b_start-step+bsize)%bsize][B_TEMPO] =
 				(float)(h - b_err[(b_start-(step*2)+bsize)%bsize][B_H] + 1) / (t - b_err[(b_start-(step*2)+bsize)%bsize][B_T] + 1);
 			}
+#ifndef TED
 		}
+#endif
     }
 }

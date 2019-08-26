@@ -1,4 +1,4 @@
-// smc16tempo.cpp
+// tedTempo.cpp
 //
 // Copyright (C) 2014-2019 Grigore Burloiu
 /*
@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef TED
+#ifdef TED
 
 #include "tempo.h"
 

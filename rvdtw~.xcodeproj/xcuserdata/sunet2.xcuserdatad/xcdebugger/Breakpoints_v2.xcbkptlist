@@ -47,7 +47,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "479"
             endingLineNumber = "479"
-            landmarkName = "Raskell::perform(double *in, long sampleframes, int dest)"
+            landmarkName = "Raskell::feats(t_uint16 argc)"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
@@ -63,7 +63,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "486"
             endingLineNumber = "486"
-            landmarkName = "Raskell::perform(double *in, long sampleframes, int dest)"
+            landmarkName = "Raskell::feats(t_uint16 argc)"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
@@ -176,9 +176,7 @@
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "1181"
-            endingLineNumber = "1181"
-            landmarkName = "Raskell::do_write(t_symbol *s)"
-            landmarkType = "7">
+            endingLineNumber = "1181">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -208,9 +206,7 @@
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "1191"
-            endingLineNumber = "1191"
-            landmarkName = "Raskell::set_buffer(t_symbol *s, int dest)"
-            landmarkType = "7">
+            endingLineNumber = "1191">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -224,9 +220,7 @@
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "1197"
-            endingLineNumber = "1197"
-            landmarkName = "Raskell::set_buffer(t_symbol *s, int dest)"
-            landmarkType = "7">
+            endingLineNumber = "1197">
          </BreakpointContent>
       </BreakpointProxy>
    </Breakpoints>

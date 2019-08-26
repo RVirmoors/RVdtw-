@@ -6,6 +6,9 @@
 
 
 
+// new TED model
+#define TED
+
 // ========= RVDTW main ===============
 
 // FFT params
