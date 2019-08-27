@@ -36,6 +36,9 @@
     <ClCompile Include="tempo\smc16tempo.cpp">
       <Filter>tempo</Filter>
     </ClCompile>
+    <ClCompile Include="tempo\tedTempo.cpp">
+      <Filter>tempo</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="defines.h" />

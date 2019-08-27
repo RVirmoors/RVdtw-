@@ -105,7 +105,7 @@
     <LinkIncremental>false</LinkIncremental>
     <TargetExt>.mxe64</TargetExt>
     <OutDir>$(C74SUPPORT)..\..\externals\</OutDir>
-        <IncludePath>$(ProjectDir)\fftw\64;$(ProjectDir)\Chord-Detector-and-Chromagram\src;$(ProjectDir);$(ProjectDir)\BTrack\src;$(ProjectDir)\libsamplerate\src;$(ProjectDir)\oDTW\;$(ProjectDir)\tempo\;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)\fftw\64;$(ProjectDir)\Chord-Detector-and-Chromagram\src;$(ProjectDir);$(ProjectDir)\BTrack\src;$(ProjectDir)\libsamplerate\src;$(ProjectDir)\oDTW\;$(ProjectDir)\tempo\;$(IncludePath)</IncludePath>
     <SourcePath>$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSdkDir)include;$(FrameworkSDKDir)\include;</SourcePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -248,7 +248,7 @@
       <OmitFramePointers>true</OmitFramePointers>
       <WholeProgramOptimization>true</WholeProgramOptimization>
       <AdditionalIncludeDirectories>$(C74SUPPORT)\max-includes;$(C74SUPPORT)\msp-includes;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>MAXAPI_USE_MSCRT;USE_FFTW;WIN_VERSION;WIN32;NDEBUG;_WINDOWS;_USRDLL;WIN_EXT_VERSION;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>MAXAPI_USE_MSCRT;USE_FFTW;TED;WIN_VERSION;WIN32;NDEBUG;_WINDOWS;_USRDLL;WIN_EXT_VERSION;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <ExceptionHandling />
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
@@ -300,6 +300,7 @@
     <ClCompile Include="rvdtw~.cpp" />
     <ClCompile Include="ted\ted.cpp" />
     <ClCompile Include="tempo\smc16tempo.cpp" />
+    <ClCompile Include="tempo\tedTempo.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="defines.h" />
