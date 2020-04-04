@@ -1,0 +1,372 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		22CF119B0EE9A8250054F513 /* rvdtw~.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 22CF119A0EE9A8250054F513 /* rvdtw~.cpp */; };
+		AF1B871B1CE9C65E001B166F /* libfftw3.a in Frameworks */ = {isa = PBXBuildFile; fileRef = AF1B871A1CE9C65E001B166F /* libfftw3.a */; };
+		AF1B871D1CE9C686001B166F /* fftw3.h in Headers */ = {isa = PBXBuildFile; fileRef = AF1B871C1CE9C686001B166F /* fftw3.h */; };
+		AF1B87251CE9C8CD001B166F /* oDTW.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AF1B87231CE9C8CD001B166F /* oDTW.cpp */; };
+		AF1B87261CE9C8CD001B166F /* oDTW.h in Headers */ = {isa = PBXBuildFile; fileRef = AF1B87241CE9C8CD001B166F /* oDTW.h */; };
+		AF1B872D1CE9C97C001B166F /* samplerate.h in Headers */ = {isa = PBXBuildFile; fileRef = AF1B872C1CE9C97C001B166F /* samplerate.h */; };
+		AF1B87301CE9CBBD001B166F /* OnsetDetectionFunction.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AF1B872E1CE9CBBD001B166F /* OnsetDetectionFunction.cpp */; };
+		AF1B87311CE9CBBD001B166F /* OnsetDetectionFunction.h in Headers */ = {isa = PBXBuildFile; fileRef = AF1B872F1CE9CBBD001B166F /* OnsetDetectionFunction.h */; };
+		AF1B87381CE9CF13001B166F /* libsamplerate.a in Frameworks */ = {isa = PBXBuildFile; fileRef = AF1B87371CE9CF13001B166F /* libsamplerate.a */; };
+		AFCAF7AF230AB4380024F3F6 /* ted.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AFCAF7AC230AB4380024F3F6 /* ted.cpp */; };
+		AFCAF7B0230AB4380024F3F6 /* ted.h in Headers */ = {isa = PBXBuildFile; fileRef = AFCAF7AD230AB4380024F3F6 /* ted.h */; };
+		AFCAF7B6230C04280024F3F6 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = AFCAF7B3230C04280024F3F6 /* README.md */; };
+		AFCAF7B7230C04280024F3F6 /* smc16tempo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AFCAF7B4230C04280024F3F6 /* smc16tempo.cpp */; };
+		AFCAF7B8230C04280024F3F6 /* tempo.h in Headers */ = {isa = PBXBuildFile; fileRef = AFCAF7B5230C04280024F3F6 /* tempo.h */; };
+		AFCAF7BA2313F0FC0024F3F6 /* tedTempo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AFCAF7B92313F0FC0024F3F6 /* tedTempo.cpp */; };
+		AFF8E8DD1CE9BF7600B72122 /* defines.h in Headers */ = {isa = PBXBuildFile; fileRef = AFF8E8DA1CE9BF7600B72122 /* defines.h */; };
+		AFF8E8DE1CE9BF7600B72122 /* README.md in Sources */ = {isa = PBXBuildFile; fileRef = AFF8E8DB1CE9BF7600B72122 /* README.md */; };
+		AFF8E8DF1CE9BF7600B72122 /* rvdtw~.h in Headers */ = {isa = PBXBuildFile; fileRef = AFF8E8DC1CE9BF7600B72122 /* rvdtw~.h */; };
+		AFF8E8E11CE9BFAC00B72122 /* BTrack.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AFF8E8E01CE9BFAC00B72122 /* BTrack.cpp */; };
+		AFF8E8E41CE9BFD900B72122 /* BTrack.h in Headers */ = {isa = PBXBuildFile; fileRef = AFF8E8E31CE9BFD900B72122 /* BTrack.h */; };
+		AFF8E8E71CE9BFEE00B72122 /* Chromagram.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AFF8E8E51CE9BFEE00B72122 /* Chromagram.cpp */; };
+		AFF8E8E81CE9BFEE00B72122 /* Chromagram.h in Headers */ = {isa = PBXBuildFile; fileRef = AFF8E8E61CE9BFEE00B72122 /* Chromagram.h */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		22CF10220EE984600054F513 /* maxmspsdk.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = maxmspsdk.xcconfig; path = ../../maxmspsdk.xcconfig; sourceTree = SOURCE_ROOT; };
+		22CF119A0EE9A8250054F513 /* rvdtw~.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = "rvdtw~.cpp"; sourceTree = "<group>"; };
+		2FBBEAE508F335360078DB84 /* rvdtw~.mxo */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "rvdtw~.mxo"; sourceTree = BUILT_PRODUCTS_DIR; };
+		AF1B871A1CE9C65E001B166F /* libfftw3.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libfftw3.a; path = /opt/local/lib/libfftw3.a; sourceTree = "<absolute>"; };
+		AF1B871C1CE9C686001B166F /* fftw3.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = fftw3.h; path = /opt/local/include/fftw3.h; sourceTree = "<absolute>"; };
+		AF1B87231CE9C8CD001B166F /* oDTW.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = oDTW.cpp; path = oDTW/oDTW.cpp; sourceTree = "<group>"; };
+		AF1B87241CE9C8CD001B166F /* oDTW.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = oDTW.h; path = oDTW/oDTW.h; sourceTree = "<group>"; };
+		AF1B872C1CE9C97C001B166F /* samplerate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = samplerate.h; path = /usr/local/include/samplerate.h; sourceTree = "<absolute>"; };
+		AF1B872E1CE9CBBD001B166F /* OnsetDetectionFunction.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = OnsetDetectionFunction.cpp; path = BTrack/src/OnsetDetectionFunction.cpp; sourceTree = "<group>"; };
+		AF1B872F1CE9CBBD001B166F /* OnsetDetectionFunction.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = OnsetDetectionFunction.h; path = BTrack/src/OnsetDetectionFunction.h; sourceTree = "<group>"; };
+		AF1B87371CE9CF13001B166F /* libsamplerate.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libsamplerate.a; path = ../../../../../../../usr/local/lib/libsamplerate.a; sourceTree = "<group>"; };
+		AFCAF7AC230AB4380024F3F6 /* ted.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ted.cpp; sourceTree = "<group>"; };
+		AFCAF7AD230AB4380024F3F6 /* ted.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ted.h; sourceTree = "<group>"; };
+		AFCAF7B3230C04280024F3F6 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		AFCAF7B4230C04280024F3F6 /* smc16tempo.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = smc16tempo.cpp; sourceTree = "<group>"; };
+		AFCAF7B5230C04280024F3F6 /* tempo.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = tempo.h; sourceTree = "<group>"; };
+		AFCAF7B92313F0FC0024F3F6 /* tedTempo.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = tedTempo.cpp; sourceTree = "<group>"; };
+		AFF8E8DA1CE9BF7600B72122 /* defines.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = defines.h; sourceTree = "<group>"; };
+		AFF8E8DB1CE9BF7600B72122 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		AFF8E8DC1CE9BF7600B72122 /* rvdtw~.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "rvdtw~.h"; sourceTree = "<group>"; };
+		AFF8E8E01CE9BFAC00B72122 /* BTrack.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = BTrack.cpp; path = BTrack/src/BTrack.cpp; sourceTree = "<group>"; };
+		AFF8E8E31CE9BFD900B72122 /* BTrack.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = BTrack.h; path = BTrack/src/BTrack.h; sourceTree = "<group>"; };
+		AFF8E8E51CE9BFEE00B72122 /* Chromagram.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = Chromagram.cpp; path = Chroma/src/Chromagram.cpp; sourceTree = "<group>"; };
+		AFF8E8E61CE9BFEE00B72122 /* Chromagram.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Chromagram.h; path = Chroma/src/Chromagram.h; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		2FBBEADC08F335360078DB84 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AF1B871B1CE9C65E001B166F /* libfftw3.a in Frameworks */,
+				AF1B87381CE9CF13001B166F /* libsamplerate.a in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		089C166AFE841209C02AAC07 /* iterator */ = {
+			isa = PBXGroup;
+			children = (
+				AF1B87271CE9C8D5001B166F /* oDTW */,
+				AFF8E8E91CE9BFF500B72122 /* Chroma */,
+				AFF8E8E21CE9BFB400B72122 /* BTrack */,
+				AFF8E8DA1CE9BF7600B72122 /* defines.h */,
+				AFCAF7B2230C04280024F3F6 /* tempo */,
+				AFF8E8DB1CE9BF7600B72122 /* README.md */,
+				AFF8E8DC1CE9BF7600B72122 /* rvdtw~.h */,
+				22CF119A0EE9A8250054F513 /* rvdtw~.cpp */,
+				AFCAF7AB230AB4380024F3F6 /* ted */,
+				22CF10220EE984600054F513 /* maxmspsdk.xcconfig */,
+				19C28FB4FE9D528D11CA2CBB /* Products */,
+				AF1B87321CE9CC16001B166F /* samplerate */,
+				AF1B871E1CE9C860001B166F /* fftw */,
+			);
+			name = iterator;
+			sourceTree = "<group>";
+		};
+		19C28FB4FE9D528D11CA2CBB /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				2FBBEAE508F335360078DB84 /* rvdtw~.mxo */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		AF1B871E1CE9C860001B166F /* fftw */ = {
+			isa = PBXGroup;
+			children = (
+				AF1B871A1CE9C65E001B166F /* libfftw3.a */,
+				AF1B871C1CE9C686001B166F /* fftw3.h */,
+			);
+			name = fftw;
+			sourceTree = "<group>";
+		};
+		AF1B87271CE9C8D5001B166F /* oDTW */ = {
+			isa = PBXGroup;
+			children = (
+				AF1B87231CE9C8CD001B166F /* oDTW.cpp */,
+				AF1B87241CE9C8CD001B166F /* oDTW.h */,
+			);
+			name = oDTW;
+			sourceTree = "<group>";
+		};
+		AF1B87321CE9CC16001B166F /* samplerate */ = {
+			isa = PBXGroup;
+			children = (
+				AF1B87371CE9CF13001B166F /* libsamplerate.a */,
+				AF1B872C1CE9C97C001B166F /* samplerate.h */,
+			);
+			name = samplerate;
+			sourceTree = "<group>";
+		};
+		AFCAF7AB230AB4380024F3F6 /* ted */ = {
+			isa = PBXGroup;
+			children = (
+				AFCAF7AC230AB4380024F3F6 /* ted.cpp */,
+				AFCAF7AD230AB4380024F3F6 /* ted.h */,
+			);
+			path = ted;
+			sourceTree = "<group>";
+		};
+		AFCAF7B2230C04280024F3F6 /* tempo */ = {
+			isa = PBXGroup;
+			children = (
+				AFCAF7B3230C04280024F3F6 /* README.md */,
+				AFCAF7B92313F0FC0024F3F6 /* tedTempo.cpp */,
+				AFCAF7B4230C04280024F3F6 /* smc16tempo.cpp */,
+				AFCAF7B5230C04280024F3F6 /* tempo.h */,
+			);
+			path = tempo;
+			sourceTree = "<group>";
+		};
+		AFF8E8E21CE9BFB400B72122 /* BTrack */ = {
+			isa = PBXGroup;
+			children = (
+				AF1B872E1CE9CBBD001B166F /* OnsetDetectionFunction.cpp */,
+				AF1B872F1CE9CBBD001B166F /* OnsetDetectionFunction.h */,
+				AFF8E8E31CE9BFD900B72122 /* BTrack.h */,
+				AFF8E8E01CE9BFAC00B72122 /* BTrack.cpp */,
+			);
+			name = BTrack;
+			sourceTree = "<group>";
+		};
+		AFF8E8E91CE9BFF500B72122 /* Chroma */ = {
+			isa = PBXGroup;
+			children = (
+				AFF8E8E51CE9BFEE00B72122 /* Chromagram.cpp */,
+				AFF8E8E61CE9BFEE00B72122 /* Chromagram.h */,
+			);
+			name = Chroma;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXHeadersBuildPhase section */
+		2FBBEAD708F335360078DB84 /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AFCAF7B0230AB4380024F3F6 /* ted.h in Headers */,
+				AF1B871D1CE9C686001B166F /* fftw3.h in Headers */,
+				AF1B872D1CE9C97C001B166F /* samplerate.h in Headers */,
+				AF1B87261CE9C8CD001B166F /* oDTW.h in Headers */,
+				AFCAF7B8230C04280024F3F6 /* tempo.h in Headers */,
+				AFF8E8DD1CE9BF7600B72122 /* defines.h in Headers */,
+				AFF8E8DF1CE9BF7600B72122 /* rvdtw~.h in Headers */,
+				AF1B87311CE9CBBD001B166F /* OnsetDetectionFunction.h in Headers */,
+				AFF8E8E41CE9BFD900B72122 /* BTrack.h in Headers */,
+				AFF8E8E81CE9BFEE00B72122 /* Chromagram.h in Headers */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXHeadersBuildPhase section */
+
+/* Begin PBXNativeTarget section */
+		2FBBEAD608F335360078DB84 /* max-external */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 2FBBEAE008F335360078DB84 /* Build configuration list for PBXNativeTarget "max-external" */;
+			buildPhases = (
+				2FBBEAD708F335360078DB84 /* Headers */,
+				2FBBEAD808F335360078DB84 /* Resources */,
+				2FBBEADA08F335360078DB84 /* Sources */,
+				2FBBEADC08F335360078DB84 /* Frameworks */,
+				2FBBEADF08F335360078DB84 /* Rez */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "max-external";
+			productName = iterator;
+			productReference = 2FBBEAE508F335360078DB84 /* rvdtw~.mxo */;
+			productType = "com.apple.product-type.bundle";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		089C1669FE841209C02AAC07 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 0720;
+			};
+			buildConfigurationList = 2FBBEACF08F335010078DB84 /* Build configuration list for PBXProject "rvdtw~" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = English;
+			hasScannedForEncodings = 1;
+			knownRegions = (
+				English,
+				Japanese,
+				French,
+				German,
+			);
+			mainGroup = 089C166AFE841209C02AAC07 /* iterator */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				2FBBEAD608F335360078DB84 /* max-external */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		2FBBEAD808F335360078DB84 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AFCAF7B6230C04280024F3F6 /* README.md in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXRezBuildPhase section */
+		2FBBEADF08F335360078DB84 /* Rez */ = {
+			isa = PBXRezBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXRezBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		2FBBEADA08F335360078DB84 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AFCAF7BA2313F0FC0024F3F6 /* tedTempo.cpp in Sources */,
+				AFF8E8E71CE9BFEE00B72122 /* Chromagram.cpp in Sources */,
+				AFF8E8DE1CE9BF7600B72122 /* README.md in Sources */,
+				22CF119B0EE9A8250054F513 /* rvdtw~.cpp in Sources */,
+				AF1B87301CE9CBBD001B166F /* OnsetDetectionFunction.cpp in Sources */,
+				AF1B87251CE9C8CD001B166F /* oDTW.cpp in Sources */,
+				AFCAF7AF230AB4380024F3F6 /* ted.cpp in Sources */,
+				AFCAF7B7230C04280024F3F6 /* smc16tempo.cpp in Sources */,
+				AFF8E8E11CE9BFAC00B72122 /* BTrack.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		2FBBEAD008F335010078DB84 /* Development */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = (
+					i386,
+					x86_64,
+				);
+				CLANG_CXX_LANGUAGE_STANDARD = "c++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = c11;
+				GCC_PREPROCESSOR_DEFINITIONS = "";
+				GCC_PREPROCESSOR_DEFINITIONS_NOT_USED_IN_PRECOMPS = USE_FFTW;
+				HEADER_SEARCH_PATHS = /opt/local/include/;
+				LIBRARY_SEARCH_PATHS = /usr/local/lib/;
+				ONLY_ACTIVE_ARCH = NO;
+			};
+			name = Development;
+		};
+		2FBBEAD108F335010078DB84 /* Deployment */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = (
+					i386,
+					x86_64,
+				);
+				CLANG_CXX_LANGUAGE_STANDARD = "c++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				GCC_C_LANGUAGE_STANDARD = c11;
+				GCC_PREPROCESSOR_DEFINITIONS = "";
+				GCC_PREPROCESSOR_DEFINITIONS_NOT_USED_IN_PRECOMPS = USE_FFTW;
+				HEADER_SEARCH_PATHS = /opt/local/include/;
+				LIBRARY_SEARCH_PATHS = /usr/local/lib/;
+			};
+			name = Deployment;
+		};
+		2FBBEAE108F335360078DB84 /* Development */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 22CF10220EE984600054F513 /* maxmspsdk.xcconfig */;
+			buildSettings = {
+				ARCHS = "$(ARCHS_STANDARD)";
+				COMBINE_HIDPI_IMAGES = YES;
+				COPY_PHASE_STRIP = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					/opt/local/lib,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.cycling74.${PRODUCT_NAME:rfc1034identifier}";
+				STRIPFLAGS = USE_FFTW;
+			};
+			name = Development;
+		};
+		2FBBEAE208F335360078DB84 /* Deployment */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 22CF10220EE984600054F513 /* maxmspsdk.xcconfig */;
+			buildSettings = {
+				ARCHS = "$(ARCHS_STANDARD)";
+				COMBINE_HIDPI_IMAGES = YES;
+				COPY_PHASE_STRIP = YES;
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					/opt/local/lib,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.cycling74.${PRODUCT_NAME:rfc1034identifier}";
+				STRIPFLAGS = USE_FFTW;
+			};
+			name = Deployment;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		2FBBEACF08F335010078DB84 /* Build configuration list for PBXProject "rvdtw~" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2FBBEAD008F335010078DB84 /* Development */,
+				2FBBEAD108F335010078DB84 /* Deployment */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Development;
+		};
+		2FBBEAE008F335360078DB84 /* Build configuration list for PBXNativeTarget "max-external" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2FBBEAE108F335360078DB84 /* Development */,
+				2FBBEAE208F335360078DB84 /* Deployment */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Development;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 089C1669FE841209C02AAC07 /* Project object */;
+}
